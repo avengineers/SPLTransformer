@@ -1,0 +1,5 @@
+cmake
+ninja
+gcc
+ruby
+python

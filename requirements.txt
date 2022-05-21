@@ -1,0 +1,4 @@
+xmlrunner==1.7.7
+docopt-ng==0.7.2
+autopep8==1.6.0
+

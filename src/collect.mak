@@ -22,8 +22,8 @@ COMPILER_DIR_REL       := $(COMPILER_PARENT_DIR)/$(COMPILER_DIR)
 COMPILER_DIR_ABS       := $(abspath $(COMPILER_DIR_REL))
 COMPILER_PACKAGE       := $(subst $(ccolon),gcc,$(subst .,p,$(COMPILER_DIR)))
 
-sourcefiles            := $(subst $(abspath $(PROJECT_ROOT))/,,$(abspath $(SRC)))
-include_paths          := $(subst $(COMPILER_DIR_ABS),$${COMPILER_PATH},$(subst $(abspath $(PROJECT_ROOT))/,,$(abspath $(INCLUDE_PATH))))
+sourcefiles            := $(subst $(abspath $(MQ_PROJECT_ROOT))/,,$(abspath $(SRC) $(ASM)))
+include_paths          := $(subst $(COMPILER_DIR_ABS),$${COMPILER_PATH},$(subst $(abspath $(MQ_PROJECT_ROOT))/,,$(abspath $(INCLUDE_PATH))))
 # Currently we do not need this.
 # include_paths          := $(call uniq,$(patsubst %/,%,$(dir $(sourcefiles)) $(include_paths)))
 
@@ -56,7 +56,7 @@ $(file  >>$(CMAKE_PARTS_FILE),)
 $(file >>$(CMAKE_PARTS_FILE),add_component(legacy/$(VARIANT)))
 ifneq (,$(strip $(LDFILE)))
 ifneq (,$(findstring comp_20,$(COMPILER_PACKAGE)))
-$(file >>$(CMAKE_PARTS_FILE),target_link_libraries($${EXE_TARGET_NAME} $${CMAKE_CURRENT_LIST_DIR}/Bld/$(LDFILE)))
+$(file >>$(CMAKE_PARTS_FILE),target_link_libraries($${ELF_TARGET_NAME} $${CMAKE_CURRENT_LIST_DIR}/Bld/$(LDFILE)))
 endif
 endif
 

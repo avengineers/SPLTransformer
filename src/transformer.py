@@ -10,10 +10,11 @@ Options:
   -h --help        Show this screen.
   --source=DIR     Source directory holding a Dimensions make project
   --target=DIR     Target directory for the transformed CMake project
-  --variant=VARIANT  VARIANT of the transformed CMake project (e.g., 'ANYAG_CoolProject')
+  --variant=VARIANT  VARIANT of the transformed CMake project (e.g., 'customer1_subsystem_flavor')
 
 """
 
+import glob
 from docopt import docopt
 import logging
 import subprocess
@@ -42,6 +43,7 @@ class Transformer:
         self.copy_build_wrapper_files()
         self.create_cmake_project()
         self.copy_linker_definition()
+        self.copy_config()
         self.create_variant_json()
 
     def create_cmake_project(self):
@@ -51,12 +53,15 @@ class Transformer:
         (self.out_path / 'legacy' /
          self.variant).mkdir(parents=True, exist_ok=True)
         (self.out_path / 'tools/toolchains/gcc').mkdir(parents=True, exist_ok=True)
+        (self.out_path / 'tools/toolchains/comp_201754').mkdir(parents=True, exist_ok=True)
+        (self.out_path / 'tools/toolchains/comp_201914').mkdir(parents=True, exist_ok=True)
+        (self.out_path / 'tools/toolchains/TriCore_v6p2r2p2').mkdir(parents=True, exist_ok=True)
 
         # run twice to get properties file first
         self.run_collect_mak()
 
         variant_parts_path = (self.out_path / 'variants' /
-                             self.variant / 'parts.cmake')
+                              self.variant / 'parts.cmake')
         with open(variant_parts_path, 'a') as f:
             for root, dirs, files in os.walk(self.out_path / 'variants' / self.variant / 'Lib'):
                 for file in files:
@@ -65,11 +70,7 @@ class Transformer:
                         rel_path = os.path.relpath(os.path.join(
                             root, file), self.out_path / 'variants' / self.variant).replace('\\', '/')
                         f.write(
-                            'target_link_libraries(${{EXE_TARGET_NAME}} ${{CMAKE_CURRENT_LIST_DIR}}/{})\n'.format(rel_path))
-                   
-        variant_config_path = (self.out_path / 'variants' / 'config.h.in')                
-        with open(variant_config_path, 'w') as f:
-            f.write('#cmakedefine CFG_USE_COMPONENT_A_INTERFACE @CFG_USE_COMPONENT_A_INTERFACE@\n#cmakedefine CFG_USE_COMPONENT_B_INTERFACE @CFG_USE_COMPONENT_B_INTERFACE@\n#cmakedefine CFG_DUMMY_INTERFACE_DEFINED @CFG_DUMMY_INTERFACE_DEFINED@')
+                            'target_link_libraries(${{ELF_TARGET_NAME}} ${{CMAKE_CURRENT_LIST_DIR}}/{})\n'.format(rel_path))
 
     def run_collect_mak(self):
         subprocess.run(
@@ -90,21 +91,51 @@ class Transformer:
 
     def copy_linker_definition(self):
         bld_cfg_out = self.out_path / 'variants' / self.variant / 'Bld/Cfg'
-
         mirror_tree(self.in_path / 'Impl/Bld/Cfg', bld_cfg_out)
         for path, dirs, files in os.walk(os.path.abspath(bld_cfg_out)):
             for filename in files:
                 filepath = os.path.join(path, filename)
                 with open(filepath) as f:
-                    s = f.read()
+                    try:
+                        s = f.read()
+                    except:
+                        print(f"WARNING: Could not read file: {filepath}. This is most likely a binary file.")
+                        continue
                 s = s.replace(
-                    "../../Src", "../../../../../legacy/" + self.variant)
+                    '../../Src', '../../../../../legacy/' + self.variant)
                 with open(filepath, "w") as f:
                     f.write(s)
 
+    def copy_config(self):
+        config_out = self.out_path / 'variants' / self.variant / 'Cfg'
+        mirror_tree(self.in_path / 'Impl/Cfg', config_out)
+        for filename in glob.glob(os.path.abspath(config_out) + "/**/*.bat", recursive=True):
+            with open(filename) as f:
+                s = f.read()
+            s = s.replace('start ..\\..\\..\\ThirdParty\\CBD\\',
+                          'start ..\\..\\..\\..\\..\\build\\deps\\CBD123456\\')
+            with open(filename, "w") as f:
+                f.write(s)
+        for filename in glob.glob(os.path.abspath(config_out) + "/**/*.dpa", recursive=True):
+            with open(filename) as f:
+                s = f.read()
+            s = s.replace('>.\\', '>')
+            s = s.replace('>..\\..\\..\\ThirdParty\CBD\\',
+                          '>..\\..\\..\\..\\..\\build\\deps\\CBD123456\\')
+            s = s.replace('>..\..\..\ThirdParty\CBD<',
+                          '>..\\..\\..\\..\\..\\build\\deps\\CBD123456<')
+            s = s.replace('>..\..\Src\Bsw\GenData\\', '>..\\..\\..\\..\\..\\legacy\\{variant}\\Bsw\\GenData\\'.format(
+                variant=self.variant.replace('/', '\\')))
+            s = s.replace('>..\..\Src\Bsw\GenData<', '>..\\..\\..\\..\\..\\legacy\\{variant}\\Bsw\\GenData<'.format(
+                variant=self.variant.replace('/', '\\')))
+            with open(filename, "w") as f:
+                f.write(s)
+
     def copy_libs(self):
-        mirror_tree(self.in_path / 'ThirdParty/AnyAG',
-                    self.out_path / 'variants' / self.variant / 'Lib/AnyAG', ['*.lib', '*.a'])
+        mirror_tree(self.in_path / 'ThirdParty/customer1',
+                    self.out_path / 'variants' / self.variant / 'Lib/customer1', ['*.lib', '*.a'])
+        mirror_tree(self.in_path / 'ThirdParty/customer2',
+                    self.out_path / 'variants' / self.variant / 'Lib/customer2', ['*.lib', '*.a'])
 
     def create_variant_json(self, variant=''):
         if not variant:

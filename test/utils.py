@@ -12,3 +12,9 @@ def get_test_data(filename=""):
 
 def get_output_folder():
     return (Path(__file__).parent.parent / "output").resolve()
+
+
+def read_file(path):
+    with open(path) as f:
+        lines = ''.join(f.readlines())
+    return lines

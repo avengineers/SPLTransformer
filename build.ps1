@@ -3,12 +3,22 @@ $ErrorActionPreference = "Stop"
 # Needed on Jenkins, somehow the env var PATH is not updated automatically
 # after tool installations by scoop
 Function ReloadEnvVars () {
-    $Env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+    $Env:Path = [System.Environment]::GetEnvironmentVariable("Path", "User") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "Machine")
 }
 
 Function ScoopInstall ([string[]]$Packages) {
-    Invoke-CommandLine -CommandLine "scoop install $Packages"
-    ReloadEnvVars
+    if ($Packages) {
+        Invoke-CommandLine -CommandLine "scoop install $Packages"
+        ReloadEnvVars
+    }
+}
+
+Function PythonInstall ([string[]]$Packages) {
+    if ($Packages) {
+        $PipInstaller = "python -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org"
+        Invoke-CommandLine -CommandLine "$PipInstaller $Packages"
+        ReloadEnvVars
+    }
 }
 
 Function Invoke-CommandLine {
@@ -28,14 +38,14 @@ Function Invoke-CommandLine {
     }
 }
 
-# Use default proxy
-# $ProxyHost = '<your host>'
-# $Env:HTTP_PROXY = "http://$ProxyHost"
-# $Env:HTTPS_PROXY = $Env:HTTP_PROXY
-# $Env:NO_PROXY = "localhost, .other-domain.com"
-# $WebProxy = New-Object System.Net.WebProxy($Env:HTTP_PROXY, $true, ($Env:NO_PROXY).split(','))
-# [net.webrequest]::defaultwebproxy = $WebProxy
-# [net.webrequest]::defaultwebproxy.credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
+Push-Location $PSScriptRoot
+
+# TODO: read proxy from a configuration file to make this script independent on network settings
+if ($Env:HTTP_PROXY -and $Env:HTTPS_PROXY -and $Env:NO_PROXY) {
+    $WebProxy = New-Object System.Net.WebProxy($Env:HTTP_PROXY, $true, ($Env:NO_PROXY).split(','))
+    [net.webrequest]::defaultwebproxy = $WebProxy
+    [net.webrequest]::defaultwebproxy.credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
+}
 
 # Initial Scoop installation
 ReloadEnvVars
@@ -48,9 +58,9 @@ if (-Not (Get-Command scoop -errorAction SilentlyContinue)) {
         & .\install.ps1
     }
     ReloadEnvVars
-    
-    ReloadEnvVars
 }
+
+Write-Output "Running in ${pwd}"
 
 # Necessary for 7zip installation, failed on Jenkins for unknown reason. See those issues:
 # https://github.com/ScoopInstaller/Scoop/issues/460
@@ -59,13 +69,14 @@ ScoopInstall('lessmsi')
 Invoke-CommandLine -CommandLine "scoop config MSIEXTRACT_USE_LESSMSI $true"
 # Default installer tools, e.g., dark is required for python
 ScoopInstall('7zip', 'innounp', 'dark')
+Invoke-CommandLine -CommandLine "scoop bucket add ktos-scoop https://github.com/ktos/scoop" -StopAtError $false -Silent $true
+Invoke-CommandLine -CommandLine "scoop update"
 ScoopInstall('python')
-Invoke-CommandLine -CommandLine "python -m pip install --quiet --trusted-host pypi.org --trusted-host files.pythonhosted.org python-certifi-win32"
-Invoke-CommandLine -CommandLine "python -m pip install --upgrade pip"
-Invoke-CommandLine -CommandLine "python -m pip install --quiet -r requirements.txt"
+[string[]]$packages = Get-Content -Path .\requirements.txt
+PythonInstall($packages)
 
 # We need GNU Make for transformation of Make projects
-ScoopInstall('gcc')
+ScoopInstall('winlibs-mingw-llvm')
 
 if ($args) {
     Invoke-CommandLine -CommandLine "python src/transformer.py $args"
@@ -77,3 +88,5 @@ else {
 
 $version=git rev-parse --short HEAD
 Write-Host Transformer Version = $version
+
+Pop-Location

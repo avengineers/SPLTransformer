@@ -1,8 +1,9 @@
 # Readme
 
+> **_NOTE:_** If you are running this script behind a proxy, make sure to set HTTP_PROXY, HTTPS_PROXY and NO_PROXY.
 ## Usage
 
-> **_NOTE:_**  Although you can run the Make2SPL project as a standalone tool, for convenience it is recommended to run it from within an SPL repository.
+> **_NOTE:_**  Although you can run the SPLTransformer project as a standalone tool, for convenience it is recommended to run it from within an SPL repository.
 
 > **_NOTE:_**  To get a detailed explanation about how to transform a project from Make to CMake and import into a SPL, have a look into SPL repository README.md: https://github.com/avengineers/SPL/blob/develop/README.md
 

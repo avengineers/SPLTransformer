@@ -1,0 +1,1 @@
+int dummyInterface(void);

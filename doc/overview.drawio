@@ -1,0 +1,158 @@
+<mxfile host="65bd71144e">
+    <diagram id="EIy-g8aQ2TAn4GChEMU9" name="Seite-1">
+        <mxGraphModel dx="1273" dy="958" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1.5" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-1" value="&lt;b&gt;makefile&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="570" y="750" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-2" value="&lt;b&gt;Make/config.mak&lt;/b&gt;&lt;br&gt;&lt;div style=&quot;text-align: left&quot;&gt;&lt;span&gt;- defines myC&lt;/span&gt;&lt;/div&gt;&lt;span&gt;&lt;div style=&quot;text-align: left&quot;&gt;&lt;span&gt;- defines Compiler&lt;/span&gt;&lt;/div&gt;&lt;/span&gt;&lt;span&gt;&lt;div style=&quot;text-align: left&quot;&gt;&lt;span&gt;- defines verbosity&lt;/span&gt;&lt;/div&gt;&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="860" width="120" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-3" value="&lt;b&gt;Make/Static/tools.mak&lt;/b&gt;&lt;br&gt;&lt;div style=&quot;text-align: left&quot;&gt;&lt;span&gt;- defines shell commands&lt;/span&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="470" y="860" width="130" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-4" value="&lt;b&gt;Make/Static/const.mak&lt;/b&gt;&lt;br&gt;&lt;div style=&quot;text-align: left&quot;&gt;&lt;span&gt;- defines static directories (Obj/, Bin/)&lt;/span&gt;&lt;br&gt;&lt;span&gt;- defines Bsw Module list&lt;/span&gt;&lt;br&gt;&lt;span&gt;- defines CCSW list&lt;/span&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="654" y="860" width="136" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-5" value="&lt;b&gt;Make/parts.mak&lt;/b&gt;&lt;br&gt;&lt;div style=&quot;text-align: left&quot;&gt;&lt;span&gt;- defines variable SRC (files to compile)&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left&quot;&gt;&lt;span&gt;- defines variable INCLUDE_PATH&lt;/span&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="840" y="860" width="120" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-7" value="" style="edgeStyle=elbowEdgeStyle;elbow=vertical;endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="ArP_YYCxBsAr_nBDqV21-2" target="ArP_YYCxBsAr_nBDqV21-1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="606" y="1080" as="sourcePoint"/>
+                        <mxPoint x="656" y="1030" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-8" value="" style="edgeStyle=elbowEdgeStyle;elbow=vertical;endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="ArP_YYCxBsAr_nBDqV21-3" target="ArP_YYCxBsAr_nBDqV21-1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="370" y="850" as="sourcePoint"/>
+                        <mxPoint x="640" y="820" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-9" value="" style="edgeStyle=elbowEdgeStyle;elbow=vertical;endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" parent="1" source="ArP_YYCxBsAr_nBDqV21-4" target="ArP_YYCxBsAr_nBDqV21-1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="380" y="860" as="sourcePoint"/>
+                        <mxPoint x="650" y="830" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-10" value="" style="edgeStyle=elbowEdgeStyle;elbow=vertical;endArrow=classic;html=1;rounded=0;" parent="1" source="ArP_YYCxBsAr_nBDqV21-5" target="ArP_YYCxBsAr_nBDqV21-1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="390" y="870" as="sourcePoint"/>
+                        <mxPoint x="660" y="840" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-11" value="&lt;b&gt;Make/chorus.mak&lt;/b&gt;&lt;br&gt;&lt;div style=&quot;text-align: left&quot;&gt;&lt;span&gt;- defines flags&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left&quot;&gt;&lt;span&gt;- defines executables like compiler.exe&lt;/span&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="376" y="1010" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-13" value="" style="edgeStyle=elbowEdgeStyle;elbow=vertical;endArrow=classic;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="ArP_YYCxBsAr_nBDqV21-11" target="ArP_YYCxBsAr_nBDqV21-2" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="606" y="1060" as="sourcePoint"/>
+                        <mxPoint x="656" y="1010" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="360" y="1040"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-14" value="USE_Corus=1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="371" y="960" width="60" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-18" value="&lt;div style=&quot;text-align: center&quot;&gt;&lt;b&gt;collect.mak&lt;/b&gt;&lt;/div&gt;--&amp;gt; new created&lt;br&gt;--&amp;gt; to read make variables&lt;br&gt;--&amp;gt; to print CMakeLists.txt" style="rounded=0;whiteSpace=wrap;html=1;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="555" y="560" width="150" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-19" value="Transformer" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=16;" parent="1" vertex="1">
+                    <mxGeometry x="64" y="620" width="60" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-20" value="" style="endArrow=none;dashed=1;html=1;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="30" y="690" as="sourcePoint"/>
+                        <mxPoint x="990" y="690" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-21" value="&lt;b style=&quot;font-size: 16px;&quot;&gt;Legacy&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;" parent="1" vertex="1">
+                    <mxGeometry x="50" y="720" width="60" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-24" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="ArP_YYCxBsAr_nBDqV21-1" target="ArP_YYCxBsAr_nBDqV21-18" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="590" y="820" as="sourcePoint"/>
+                        <mxPoint x="640" y="770" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="630" y="710"/>
+                            <mxPoint x="630" y="650"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;fontSize=16;" parent="1" source="ArP_YYCxBsAr_nBDqV21-27" target="ArP_YYCxBsAr_nBDqV21-26" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-27" value="&lt;b&gt;transformer.py&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="570" y="395" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-43" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=16;" parent="1" source="ArP_YYCxBsAr_nBDqV21-32" target="ArP_YYCxBsAr_nBDqV21-27" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-32" value="Transformer.git" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="330" y="370" width="90" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-34" value="CMake project" style="swimlane;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="800" y="150" width="240" height="520" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-26" value="build.bat&lt;br&gt;build.ps1&lt;br&gt;requirements.txt&lt;br&gt;CMakeLists.txt" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;align=center;" parent="ArP_YYCxBsAr_nBDqV21-34" vertex="1">
+                    <mxGeometry x="50" y="220" width="140" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-23" value="&lt;span style=&quot;text-align: center&quot;&gt;&amp;lt;flavor&amp;gt;/CMakeLists.txt&lt;/span&gt;&lt;br style=&quot;text-align: center&quot;&gt;&lt;span style=&quot;text-align: center&quot;&gt;&amp;lt;flavor&amp;gt;/toolchain.cmake&lt;/span&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;align=left;" parent="ArP_YYCxBsAr_nBDqV21-34" vertex="1">
+                    <mxGeometry x="50" y="390" width="140" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-36" value="&lt;div&gt;&amp;lt;flavor&amp;gt;/Bld/Cfg&lt;/div&gt;&amp;lt;flavor&amp;gt;/Src&lt;br&gt;&amp;lt;flavor&amp;gt;/lib/" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;align=center;" parent="ArP_YYCxBsAr_nBDqV21-34" vertex="1">
+                    <mxGeometry x="50" y="65" width="140" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-42" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;fontSize=16;" parent="1" source="ArP_YYCxBsAr_nBDqV21-38" target="ArP_YYCxBsAr_nBDqV21-36" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-38" value="&lt;b&gt;transformer.py&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="570" y="240" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-49" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=16;" parent="1" source="ArP_YYCxBsAr_nBDqV21-39" target="ArP_YYCxBsAr_nBDqV21-38" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-39" value="Dimensions" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="124" y="845" width="90" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-40" value="" style="endArrow=classic;html=1;rounded=0;fontSize=16;" parent="1" source="ArP_YYCxBsAr_nBDqV21-18" target="ArP_YYCxBsAr_nBDqV21-23" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="610" y="600" as="sourcePoint"/>
+                        <mxPoint x="660" y="550" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-45" value="" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;fontSize=16;" parent="1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="228" y="899.29" as="sourcePoint"/>
+                        <mxPoint x="288" y="899.29" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-46" value="" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;fontSize=16;" parent="1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="227.99999999999977" y="826.2899999999997" as="sourcePoint"/>
+                        <mxPoint x="287.9999999999998" y="826.2899999999997" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ArP_YYCxBsAr_nBDqV21-47" value="" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;fontSize=16;" parent="1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="227.99999999999977" y="983.2899999999995" as="sourcePoint"/>
+                        <mxPoint x="287.9999999999998" y="983.2899999999995" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="2" value="...&amp;nbsp; *mak" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1010" y="860" width="120" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="" style="edgeStyle=elbowEdgeStyle;elbow=vertical;endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" parent="1" source="2" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="900" y="860" as="sourcePoint"/>
+                        <mxPoint x="630" y="810" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

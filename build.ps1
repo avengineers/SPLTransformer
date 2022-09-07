@@ -69,14 +69,14 @@ ScoopInstall('lessmsi')
 Invoke-CommandLine -CommandLine "scoop config MSIEXTRACT_USE_LESSMSI $true"
 # Default installer tools, e.g., dark is required for python
 ScoopInstall('7zip', 'innounp', 'dark')
-Invoke-CommandLine -CommandLine "scoop bucket add ktos-scoop https://github.com/ktos/scoop" -StopAtError $false -Silent $true
+Invoke-CommandLine -CommandLine "scoop bucket add versions" -StopAtError $false -Silent $true
 Invoke-CommandLine -CommandLine "scoop update"
 ScoopInstall('python')
 [string[]]$packages = Get-Content -Path .\requirements.txt
 PythonInstall($packages)
 
 # We need GNU Make for transformation of Make projects
-ScoopInstall('winlibs-mingw-llvm')
+ScoopInstall('mingw-winlibs-llvm-ucrt')
 
 if ($args) {
     Invoke-CommandLine -CommandLine "python src/transformer.py $args"

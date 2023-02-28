@@ -56,6 +56,7 @@ class Transformer:
         (self.out_path / 'tools/toolchains/comp_201754').mkdir(parents=True, exist_ok=True)
         (self.out_path / 'tools/toolchains/comp_201914').mkdir(parents=True, exist_ok=True)
         (self.out_path / 'tools/toolchains/TriCore_v6p2r2p2').mkdir(parents=True, exist_ok=True)
+        (self.out_path / 'tools/toolchains/TriCore_v6p3r1').mkdir(parents=True, exist_ok=True)
 
         # run twice to get properties file first
         self.run_collect_mak()

@@ -93,15 +93,12 @@ spl_add_source(component_a/component_a.c)
     def test_copy_build_wrapper_files(self):
         """Build wrapper shall be created."""
         TestTransformer.transformer.copy_build_wrapper_files()
-        self.assertTrue((TestTransformer.out_path / 'build.bat').exists())
         self.assertTrue((TestTransformer.out_path /
                         'CMakeLists.txt').exists())
         self.assertTrue((TestTransformer.out_path /
-                        'install-mandatory.bat').exists())
-        self.assertTrue((TestTransformer.out_path /
-                        'install-optional.bat').exists())
-        self.assertTrue((TestTransformer.out_path /
                         'tools/toolchains/gcc/toolchain.cmake').exists())
+        self.assertTrue((TestTransformer.out_path /
+                        '.vscode/cmake-kits.json').exists())
 
     def test_copy_source_files(self):
         """Source files shall be copied."""
@@ -130,7 +127,8 @@ spl_add_source(component_a/component_a.c)
         )
         self.assertTrue(eb_tresos_start_script.exists())
         content = read_file(eb_tresos_start_script)
-        self.assertIn('start ..\\..\\..\\..\\..\\build\\deps\\CBD123456', content)
+        self.assertIn(
+            'start ..\\..\\..\\..\\..\\build\\deps\\CBD123456', content)
         davinci_project_file = (
             TestTransformer.out_path / 'variants' /
             TestTransformer.variant / 'Cfg/Autosar/HV_Sensor.dpa'
@@ -214,10 +212,12 @@ spl_add_source(component_a/component_a.c)
 }
 ''')
 
+    @unittest.skip("Build environment created by bootstrap.")
     def test_transform_and_build_test_project(self):
         """Transformed project shall be buildable"""
         TestTransformer.transformer.run()
         process = subprocess.run(
             [str(TestTransformer.out_path / 'build.bat'), '--build', '--target', 'all', '--variants', TestTransformer.variant])
         self.assertEqual(0, process.returncode)
-        self.assertTrue((TestTransformer.out_path / 'build/{variant}/prod/main.exe'.format(variant=TestTransformer.variant)).exists())
+        self.assertTrue((TestTransformer.out_path / 'build/{variant}/prod/main.exe'.format(
+            variant=TestTransformer.variant)).exists())

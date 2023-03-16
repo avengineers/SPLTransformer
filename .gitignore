@@ -19,9 +19,13 @@
 /.idea
 /output
 
-# Byte-compiled / optimized / DLL files
+# What: Python: byte-compiled / optimized / DLL files
+# Why: automatically created by Python during script execution
 __pycache__/
+/.pytest_cache
 *.py[cod]
 *$py.class
 
 properties.txt
+# bootstrap files are downloaded during installation
+/.bootstrap

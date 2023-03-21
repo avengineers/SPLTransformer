@@ -128,30 +128,6 @@ spl_add_source(component_a/component_a.c)
         )
         self.assertTrue((TestTransformer.out_path / ".vscode/cmake-kits.json").exists())
 
-    def test_copy_source_files(self):
-        """Source files shall be copied."""
-        TestTransformer.transformer.copy_source_files()
-        self.assertTrue(
-            (TestTransformer.out_path / "legacy/MQ_123/TEST/main.c").exists()
-        )
-        self.assertTrue(
-            (
-                TestTransformer.out_path
-                / "legacy/MQ_123/TEST/component_a/component_a.c"
-            ).exists()
-        )
-        self.assertTrue(
-            (
-                TestTransformer.out_path
-                / "legacy/MQ_123/TEST/component_a/component_a.h"
-            ).exists()
-        )
-        self.assertTrue(
-            (
-                TestTransformer.out_path / "legacy/MQ_123/TEST/include_dir/header.h"
-            ).exists()
-        )
-
     def test_copy_linker_definition(self):
         """Linker definition files shall be copied."""
         TestTransformer.transformer.copy_linker_definition()
@@ -307,3 +283,31 @@ def test_argument_parser_mutually_exclusive_arguments():
     arg_list = ["--config", "C:/my_file", "--source", "C:/input"]
     with pytest.raises(DocoptExit):
         create_argument_parser(arg_list)
+
+
+@pytest.mark.parametrize(
+    "input_path,out_path,sources_path",
+    [
+        ("test/data/prj1", "output/test/prj1", None),
+        ("test/data/prj2", "output/test/prj2", "Implementation/Src"),
+    ],
+)
+def test_copy_source_files(input_path, out_path, sources_path):
+    """Source files shall be copied."""
+    input_dir = Path(input_path)
+    out_dir = Path(out_path)
+    variant = "MY/VAR"
+    transformer = Transformer(
+        TransformerConfig(input_dir, out_dir, variant, sources=sources_path)
+    )
+    transformer.copy_source_files()
+
+    files_to_check = [
+        f"legacy/{variant}/main.c",
+        f"legacy/{variant}/component_a/component_a.c",
+        f"legacy/{variant}/component_a/component_a.h",
+        f"legacy/{variant}/include_dir/header.h",
+    ]
+
+    for file_path in files_to_check:
+        assert (out_dir / file_path).exists()

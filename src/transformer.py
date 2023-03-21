@@ -80,6 +80,10 @@ class Transformer:
     def variant(self) -> str:
         return self.config.variant
 
+    @property
+    def sources_rel_path(self) -> str:
+        return self.config.sources if self.config.sources else "Impl/Src"
+
     def run(self):
         self.copy_source_files()
         self.copy_libs()
@@ -142,7 +146,10 @@ class Transformer:
         copy_tree("src/dist", self.out_path)
 
     def copy_source_files(self):
-        mirror_tree(self.in_path / "Impl/Src", self.out_path / "legacy" / self.variant)
+        mirror_tree(
+            self.in_path / self.sources_rel_path,
+            self.out_path / "legacy" / self.variant,
+        )
 
     def copy_linker_definition(self):
         bld_cfg_out = self.out_path / "variants" / self.variant / "Bld/Cfg"

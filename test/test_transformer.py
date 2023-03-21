@@ -21,7 +21,9 @@ class TestTransformer(unittest.TestCase):
         cls.out_path = Path("output/test")
         cls.variant = "MQ_123/TEST"
         cls.transformer = Transformer(
-            cls.in_path.resolve(), cls.out_path.resolve(), cls.variant
+            TransformerConfig(
+                cls.in_path.resolve(), cls.out_path.resolve(), cls.variant
+            )
         )
         try:
             shutil.rmtree(cls.out_path)
@@ -292,41 +294,3 @@ spl_add_source(component_a/component_a.c)
                 )
             ).exists()
         )
-
-
-def test_read_config(tmp_path: Path):
-    # Create a sample dictionary
-    data = {"input_dir": "C:/my/in_dir", "output_dir": "C:/my/out_dir"}
-
-    # Write the dictionary to a JSON file
-    tmp_json_file = tmp_path / "data.json"
-    with open(tmp_json_file, "w") as f:
-        json.dump(data, f)
-
-    assert TransformerConfig(
-        input_dir=Path("C:/my/in_dir"), output_dir=Path("C:/my/out_dir")
-    ) == Transformer.read_config(tmp_json_file)
-
-
-def test_read_full_config(tmp_path: Path):
-    # Create a sample dictionary
-    data = {
-        "input_dir": "C:/my/in_dir",
-        "output_dir": "C:/my/out_dir",
-        "sources": "SRC_LIST",
-    }
-
-    # Write the dictionary to a JSON file
-    tmp_json_file = tmp_path / "data.json"
-    with open(tmp_json_file, "w") as f:
-        json.dump(data, f)
-
-    assert TransformerConfig(
-        input_dir=Path("C:/my/in_dir"),
-        output_dir=Path("C:/my/out_dir"),
-        sources="SRC_LIST",
-    ) == Transformer.read_config(tmp_json_file)
-
-
-def test_read_config_no_file():
-    assert Transformer.read_config(None) is None

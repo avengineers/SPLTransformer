@@ -31,42 +31,19 @@ import json
 class TransformerConfig:
     input_dir: Path
     output_dir: Path
+    variant: str
     sources: Optional[str] = None
 
-
-class Transformer:
-    def __init__(
-        self,
-        in_path: Path,
-        out_path: Path,
-        variant: str,
-        config_file: Optional[Path] = None,
-    ):
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.name = "Transformer"
-
-        self.in_path = in_path
-        self.out_path = out_path
-        self.variant = variant
-
-        self.impl_out_path = out_path
-        self.impl_in_path = in_path / "Impl"
-        self.build_in_path = self.impl_in_path / "Bld"
-        self.config: Optional[TransformerConfig] = self.read_config(config_file)
-
-    @staticmethod
-    def read_config(config_json_file: Optional[Path]) -> Optional[TransformerConfig]:
-        if config_json_file:
-            json_data = Transformer.read_json(config_json_file)
-            return dacite.from_dict(
-                data_class=TransformerConfig,
-                data=json_data,
-                config=dacite.Config(
-                    type_hooks={Path: lambda data: Path(data) if data else None}
-                ),
-            )
-        else:
-            return None
+    @classmethod
+    def from_json_file(cls, file: Path):
+        json_data = cls.read_json(file)
+        return dacite.from_dict(
+            data_class=cls,
+            data=json_data,
+            config=dacite.Config(
+                type_hooks={Path: lambda data: Path(data) if data else None}
+            ),
+        )
 
     @staticmethod
     def read_json(config_json_file: Path) -> Dict:
@@ -75,6 +52,32 @@ class Transformer:
         with open(config_json_file, "r") as f:
             data = json.load(f)
         return data
+
+
+class Transformer:
+    def __init__(
+        self,
+        config: TransformerConfig,
+    ):
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.name = "Transformer"
+        self.config: Optional[TransformerConfig] = config
+
+        self.impl_out_path = self.out_path
+        self.impl_in_path = self.in_path / "Impl"
+        self.build_in_path = self.impl_in_path / "Bld"
+
+    @property
+    def in_path(self) -> Path:
+        return self.config.input_dir
+
+    @property
+    def out_path(self) -> Path:
+        return self.config.output_dir
+
+    @property
+    def variant(self) -> str:
+        return self.config.variant
 
     def run(self):
         self.copy_source_files()
@@ -285,7 +288,11 @@ def copy_tree(source, target, patterns=[]):
 def main():
     arguments = docopt(__doc__)
     transformer = Transformer(
-        Path(arguments["--source"]), Path(arguments["--target"]), arguments["--variant"]
+        TransformerConfig(
+            Path(arguments["--source"]),
+            Path(arguments["--target"]),
+            arguments["--variant"],
+        )
     )
     transformer.run()
     return 0

@@ -7,16 +7,17 @@ Usage:
   transformer.py (-h | --help)
 
 Options:
-  -h --help        Show this screen.
-  --source=DIR     Source directory holding a Dimensions make project
-  --target=DIR     Target directory for the transformed CMake project
-  --variant=VARIANT  VARIANT of the transformed CMake project (e.g., 'customer1_subsystem_flavor')
-  --config=FILE    JSON configuration file
+  -h --help            Show this screen.
+  --source=DIR         Source directory holding a Dimensions make project
+  --target=DIR         Target directory for the transformed CMake project
+  --variant=VARIANT    VARIANT of the transformed CMake project (e.g., 'customer1_subsystem_flavor')
+  --config=FILE        JSON configuration file
 
 """
 
 from dataclasses import dataclass
 import glob
+import sys
 from typing import Dict, Optional
 import dacite
 from docopt import docopt
@@ -33,7 +34,7 @@ class TransformerConfig:
     input_dir: Path
     output_dir: Path
     variant: str
-    sources: Optional[str] = None
+    source_dir_rel: Optional[str] = "Impl/Src"
 
     @classmethod
     def from_json_file(cls, file: Path):
@@ -62,27 +63,21 @@ class Transformer:
     ):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.name = "Transformer"
-        self.config: Optional[TransformerConfig] = config
+        self.config: TransformerConfig = config
 
-        self.impl_out_path = self.out_path
-        self.impl_in_path = self.in_path / "Impl"
-        self.build_in_path = self.impl_in_path / "Bld"
+        self.build_in_path = self.config.input_dir / "Impl" / "Bld"
 
     @property
-    def in_path(self) -> Path:
+    def input_dir(self) -> Path:
         return self.config.input_dir
 
     @property
-    def out_path(self) -> Path:
+    def output_dir(self) -> Path:
         return self.config.output_dir
 
     @property
     def variant(self) -> str:
         return self.config.variant
-
-    @property
-    def sources_rel_path(self) -> str:
-        return self.config.sources if self.config.sources else "Impl/Src"
 
     def run(self):
         self.copy_source_files()
@@ -95,36 +90,36 @@ class Transformer:
 
     def create_cmake_project(self):
         self.logger.info("create project file")
-        (self.out_path / "variants" / self.variant).mkdir(parents=True, exist_ok=True)
-        (self.out_path / "legacy" / self.variant).mkdir(parents=True, exist_ok=True)
-        (self.out_path / "tools/toolchains/gcc").mkdir(parents=True, exist_ok=True)
-        (self.out_path / "tools/toolchains/comp_201754").mkdir(
+        (self.config.output_dir / "variants" / self.config.variant).mkdir(parents=True, exist_ok=True)
+        (self.config.output_dir / "legacy" / self.config.variant).mkdir(parents=True, exist_ok=True)
+        (self.config.output_dir / "tools/toolchains/gcc").mkdir(parents=True, exist_ok=True)
+        (self.config.output_dir / "tools/toolchains/comp_201754").mkdir(
             parents=True, exist_ok=True
         )
-        (self.out_path / "tools/toolchains/comp_201914").mkdir(
+        (self.config.output_dir / "tools/toolchains/comp_201914").mkdir(
             parents=True, exist_ok=True
         )
-        (self.out_path / "tools/toolchains/TriCore_v6p2r2p2").mkdir(
+        (self.config.output_dir / "tools/toolchains/TriCore_v6p2r2p2").mkdir(
             parents=True, exist_ok=True
         )
-        (self.out_path / "tools/toolchains/TriCore_v6p3r1").mkdir(
+        (self.config.output_dir / "tools/toolchains/TriCore_v6p3r1").mkdir(
             parents=True, exist_ok=True
         )
 
         # run twice to get properties file first
         self.run_collect_mak()
 
-        variant_parts_path = self.out_path / "variants" / self.variant / "parts.cmake"
+        variant_parts_path = self.config.output_dir / "variants" / self.config.variant / "parts.cmake"
         with open(variant_parts_path, "a") as f:
             for root, dirs, files in os.walk(
-                self.out_path / "variants" / self.variant / "Lib"
+                self.config.output_dir / "variants" / self.config.variant / "Lib"
             ):
                 for file in files:
                     print(file)
                     if file.endswith(".a") or file.endswith(".lib"):
                         rel_path = os.path.relpath(
                             os.path.join(root, file),
-                            self.out_path / "variants" / self.variant,
+                            self.config.output_dir / "variants" / self.config.variant,
                         ).replace("\\", "/")
                         f.write(
                             "target_link_libraries(${{LINK_TARGET_NAME}} ${{CMAKE_CURRENT_LIST_DIR}}/{})\n".format(
@@ -137,23 +132,23 @@ class Transformer:
             [
                 WindowsPath("src/collect.bat"),
                 self.build_in_path,
-                self.out_path,
-                self.variant,
+                self.config.output_dir,
+                self.config.variant,
             ]
         )
 
     def copy_build_wrapper_files(self):
-        copy_tree("src/dist", self.out_path)
+        copy_tree("src/dist", self.config.output_dir)
 
     def copy_source_files(self):
         mirror_tree(
-            self.in_path / self.sources_rel_path,
-            self.out_path / "legacy" / self.variant,
+            self.config.input_dir / self.config.source_dir_rel,
+            self.config.output_dir / "legacy" / self.config.variant,
         )
 
     def copy_linker_definition(self):
-        bld_cfg_out = self.out_path / "variants" / self.variant / "Bld/Cfg"
-        mirror_tree(self.in_path / "Impl/Bld/Cfg", bld_cfg_out)
+        bld_cfg_out = self.config.output_dir / "variants" / self.config.variant / "Bld/Cfg"
+        mirror_tree(self.config.input_dir / "Impl/Bld/Cfg", bld_cfg_out)
         for path, dirs, files in os.walk(os.path.abspath(bld_cfg_out)):
             for filename in files:
                 filepath = os.path.join(path, filename)
@@ -165,13 +160,14 @@ class Transformer:
                             f"WARNING: Could not read file: {filepath}. This is most likely a binary file."
                         )
                         continue
-                s = s.replace("../../Src", "../../../../../legacy/" + self.variant)
+                s = s.replace(
+                    "../../Src", "../../../../../legacy/" + self.config.variant)
                 with open(filepath, "w") as f:
                     f.write(s)
 
     def copy_config(self):
-        config_out = self.out_path / "variants" / self.variant / "Cfg"
-        mirror_tree(self.in_path / "Impl/Cfg", config_out)
+        config_out = self.config.output_dir / "variants" / self.config.variant / "Cfg"
+        mirror_tree(self.config.input_dir / "Impl/Cfg", config_out)
         for filename in glob.glob(
             os.path.abspath(config_out) + "/**/*.bat", recursive=True
         ):
@@ -200,13 +196,13 @@ class Transformer:
             s = s.replace(
                 ">..\..\Src\Bsw\GenData\\",
                 ">..\\..\\..\\..\\..\\legacy\\{variant}\\Bsw\\GenData\\".format(
-                    variant=self.variant.replace("/", "\\")
+                    variant=self.config.variant.replace("/", "\\")
                 ),
             )
             s = s.replace(
                 ">..\..\Src\Bsw\GenData<",
                 ">..\\..\\..\\..\\..\\legacy\\{variant}\\Bsw\\GenData<".format(
-                    variant=self.variant.replace("/", "\\")
+                    variant=self.config.variant.replace("/", "\\")
                 ),
             )
             with open(filename, "w") as f:
@@ -214,21 +210,21 @@ class Transformer:
 
     def copy_libs(self):
         mirror_tree(
-            self.in_path / "ThirdParty/customer1",
-            self.out_path / "variants" / self.variant / "Lib/customer1",
+            self.config.input_dir / "ThirdParty/customer1",
+            self.config.output_dir / "variants" / self.config.variant / "Lib/customer1",
             ["*.lib", "*.a"],
         )
         mirror_tree(
-            self.in_path / "ThirdParty/customer2",
-            self.out_path / "variants" / self.variant / "Lib/customer2",
+            self.config.input_dir / "ThirdParty/customer2",
+            self.config.output_dir / "variants" / self.config.variant / "Lib/customer2",
             ["*.lib", "*.a"],
         )
 
     def create_variant_json(self, variant=""):
         if not variant:
-            variant = self.variant
-        (self.out_path / ".vscode").mkdir(parents=True, exist_ok=True)
-        file = Path(self.out_path / ".vscode/cmake-variants.json")
+            variant = self.config.variant
+        (self.config.output_dir / ".vscode").mkdir(parents=True, exist_ok=True)
+        file = Path(self.config.output_dir / ".vscode/cmake-variants.json")
         flavor, subsystem = variant.split("/")
         if os.path.isfile(file):
             with open(file, "r") as f:
@@ -298,18 +294,19 @@ def create_argument_parser(argv=None):
     return arguments
 
 
-def main():
+def main() -> int:
     arguments = create_argument_parser()
-    transformer = Transformer(
-        TransformerConfig(
+    if (arguments["--config"]):
+        config = TransformerConfig.from_json_file(Path(arguments["--config"]))
+    else:
+        config = TransformerConfig(
             Path(arguments["--source"]),
             Path(arguments["--target"]),
             arguments["--variant"],
         )
-    )
-    transformer.run()
+    Transformer(config).run()
     return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

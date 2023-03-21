@@ -30,7 +30,7 @@ def test_read_full_config(tmp_path: Path):
         "input_dir": "C:/my/in_dir",
         "output_dir": "C:/my/out_dir",
         "variant": "MY/VAR",
-        "sources": "SRC_LIST",
+        "source_dir_rel": "SRC_LIST",
     }
 
     # Write the dictionary to a JSON file
@@ -42,5 +42,5 @@ def test_read_full_config(tmp_path: Path):
         input_dir=Path("C:/my/in_dir"),
         output_dir=Path("C:/my/out_dir"),
         variant="MY/VAR",
-        sources="SRC_LIST",
+        source_dir_rel="SRC_LIST",
     ) == TransformerConfig.from_json_file(tmp_json_file)

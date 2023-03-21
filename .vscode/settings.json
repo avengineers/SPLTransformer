@@ -2,5 +2,5 @@
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
     "python.formatting.provider": "autopep8",
-    "cmake.configureOnOpen": false,
+    "cmake.configureOnOpen": false
 }

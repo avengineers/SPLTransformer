@@ -112,7 +112,7 @@ else {
     }
     else {
         # Run test cases to be found in folder test/
-        Invoke-CommandLine -CommandLine "python -m pipenv run python test/run_all.py" -StopAtError $false
+        Invoke-CommandLine -CommandLine "python -m pipenv run pytest" -StopAtError $false
     }
 }
 

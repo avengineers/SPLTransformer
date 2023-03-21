@@ -3,7 +3,7 @@
 """Transformer
 
 Usage:
-  transformer.py --source=<source directory> --target=<target directory> --variant=<variant>
+  transformer.py (--source=<source directory> --target=<target directory> --variant=<variant> | --config=<config_file>)
   transformer.py (-h | --help)
 
 Options:
@@ -11,6 +11,7 @@ Options:
   --source=DIR     Source directory holding a Dimensions make project
   --target=DIR     Target directory for the transformed CMake project
   --variant=VARIANT  VARIANT of the transformed CMake project (e.g., 'customer1_subsystem_flavor')
+  --config=FILE    JSON configuration file
 
 """
 
@@ -285,8 +286,13 @@ def copy_tree(source, target, patterns=[]):
         shutil.rmtree(p)
 
 
+def create_argument_parser(argv=None):
+    arguments = docopt(__doc__, argv)
+    return arguments
+
+
 def main():
-    arguments = docopt(__doc__)
+    arguments = create_argument_parser()
     transformer = Transformer(
         TransformerConfig(
             Path(arguments["--source"]),

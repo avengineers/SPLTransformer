@@ -6,9 +6,10 @@ import subprocess
 import unittest
 import shutil
 from dacite import MissingValueError
+from docopt import DocoptExit
 
 import pytest
-from transformer import TransformerConfig, Transformer
+from transformer import TransformerConfig, Transformer, create_argument_parser
 from pathlib import Path
 from utils import read_file
 
@@ -294,3 +295,15 @@ spl_add_source(component_a/component_a.c)
                 )
             ).exists()
         )
+
+
+def test_argument_parser():
+    arg_list = ["--config", "C:/my_file"]
+    parsed_args = create_argument_parser(arg_list)
+    assert parsed_args["--config"] == "C:/my_file"
+
+
+def test_argument_parser_mutually_exclusive_arguments():
+    arg_list = ["--config", "C:/my_file", "--source", "C:/input"]
+    with pytest.raises(DocoptExit):
+        create_argument_parser(arg_list)

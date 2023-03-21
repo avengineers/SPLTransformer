@@ -17,7 +17,7 @@ class TestTransformer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.maxDiff = None
-        cls.in_path = Path("test/data")
+        cls.in_path = Path("test/data/prj1")
         cls.out_path = Path("output/test")
         cls.variant = "MQ_123/TEST"
         cls.transformer = Transformer(

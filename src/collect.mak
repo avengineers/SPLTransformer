@@ -2,15 +2,15 @@
 # and therefore not be part of MAKEFILE_LIST.
 undefine MAKEFILE_LIST
 
-include makefile
+include Makefile
 
 # store all global make variables created by legacy build env
-#MAKE_VARS_FILE := $(OUT_PATH)/variants/$(VARIANT)/original_make_vars.txt
-#$(file >$(MAKE_VARS_FILE),)
-#$(foreach v, \
-#      $(.VARIABLES), \
-#      $(file >>$(MAKE_VARS_FILE),$(v) = $($(v))) \
-# )
+MAKE_VARS_FILE := $(OUT_PATH)/variants/$(VARIANT)/original_make_vars.txt
+$(file >$(MAKE_VARS_FILE),)
+$(foreach v, \
+      $(.VARIABLES), \
+      $(file >>$(MAKE_VARS_FILE),$(v) = $($(v))) \
+ )
 
 # make a list's elements uniq
 define uniq =

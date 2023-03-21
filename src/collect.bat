@@ -1,4 +1,4 @@
-@echo off
+@echo on
 set THIS_DIR=%~dp0
 
 set BUILD_IN_PATH=%1

@@ -121,7 +121,7 @@ spl_add_source(component_a/component_a.c)
 
     def test_copy_build_wrapper_files(self):
         """Build wrapper shall be created."""
-        TestTransformer.transformer.copy_build_wrapper_files()
+        TestTransformer.transformer.copy_vscode_files()
         self.assertTrue((TestTransformer.out_path / "CMakeLists.txt").exists())
         self.assertTrue(
             (TestTransformer.out_path / "tools/toolchains/gcc/toolchain.cmake").exists()

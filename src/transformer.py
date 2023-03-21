@@ -35,6 +35,7 @@ class TransformerConfig:
     output_dir: Path
     variant: str
     source_dir_rel: Optional[str] = "Impl/Src"
+    build_dir_rel: Optional[str] = "Impl/Bld"
 
     @classmethod
     def from_json_file(cls, file: Path):
@@ -65,8 +66,6 @@ class Transformer:
         self.name = "Transformer"
         self.config: TransformerConfig = config
 
-        self.build_in_path = self.config.input_dir / "Impl" / "Bld"
-
     @property
     def input_dir(self) -> Path:
         return self.config.input_dir
@@ -82,7 +81,7 @@ class Transformer:
     def run(self):
         self.copy_source_files()
         self.copy_libs()
-        self.copy_build_wrapper_files()
+        self.copy_vscode_files()
         self.create_cmake_project()
         self.copy_linker_definition()
         self.copy_config()
@@ -90,9 +89,12 @@ class Transformer:
 
     def create_cmake_project(self):
         self.logger.info("create project file")
-        (self.config.output_dir / "variants" / self.config.variant).mkdir(parents=True, exist_ok=True)
-        (self.config.output_dir / "legacy" / self.config.variant).mkdir(parents=True, exist_ok=True)
-        (self.config.output_dir / "tools/toolchains/gcc").mkdir(parents=True, exist_ok=True)
+        (self.config.output_dir / "variants" /
+         self.config.variant).mkdir(parents=True, exist_ok=True)
+        (self.config.output_dir / "legacy" /
+         self.config.variant).mkdir(parents=True, exist_ok=True)
+        (self.config.output_dir /
+         "tools/toolchains/gcc").mkdir(parents=True, exist_ok=True)
         (self.config.output_dir / "tools/toolchains/comp_201754").mkdir(
             parents=True, exist_ok=True
         )
@@ -109,7 +111,8 @@ class Transformer:
         # run twice to get properties file first
         self.run_collect_mak()
 
-        variant_parts_path = self.config.output_dir / "variants" / self.config.variant / "parts.cmake"
+        variant_parts_path = self.config.output_dir / \
+            "variants" / self.config.variant / "parts.cmake"
         with open(variant_parts_path, "a") as f:
             for root, dirs, files in os.walk(
                 self.config.output_dir / "variants" / self.config.variant / "Lib"
@@ -131,13 +134,13 @@ class Transformer:
         subprocess.run(
             [
                 WindowsPath("src/collect.bat"),
-                self.build_in_path,
+                self.config.input_dir / self.config.build_dir_rel,
                 self.config.output_dir,
                 self.config.variant,
             ]
         )
 
-    def copy_build_wrapper_files(self):
+    def copy_vscode_files(self):
         copy_tree("src/dist", self.config.output_dir)
 
     def copy_source_files(self):
@@ -147,7 +150,8 @@ class Transformer:
         )
 
     def copy_linker_definition(self):
-        bld_cfg_out = self.config.output_dir / "variants" / self.config.variant / "Bld/Cfg"
+        bld_cfg_out = self.config.output_dir / \
+            "variants" / self.config.variant / "Bld/Cfg"
         mirror_tree(self.config.input_dir / "Impl/Bld/Cfg", bld_cfg_out)
         for path, dirs, files in os.walk(os.path.abspath(bld_cfg_out)):
             for filename in files:

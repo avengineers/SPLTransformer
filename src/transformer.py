@@ -134,8 +134,9 @@ class Transformer:
         subprocess.run(
             [
                 WindowsPath("src/collect.bat"),
-                self.config.input_dir / self.config.build_dir_rel,
+                self.config.input_dir,
                 self.config.output_dir,
+                self.config.build_dir_rel,
                 self.config.variant,
             ]
         )

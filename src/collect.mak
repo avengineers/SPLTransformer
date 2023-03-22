@@ -12,6 +12,9 @@ $(foreach v, \
       $(file >>$(MAKE_VARS_FILE),$(v) = $($(v))) \
  )
 
+# TODO: replace everything below with Python
+exit 0
+
 # make a list's elements uniq
 define uniq =
   $(eval seen :=)
@@ -28,21 +31,21 @@ ccolon = C:
 # We install Compilers via Scoop, so we need to replace the hardcoded paths from makefiles
 # into the env var values from the Scoop packages
 # Prerequisite: compiler package name in Scoop is equal to the compiler directory name inside the Dimensions repo
-#COMPILER_PARENT_DIR    := ../../ThirdParty/Compiler
-#COMPILER_DIR           := $(firstword $(subst /, ,$(subst $(COMPILER_PARENT_DIR),,$(CC))))
-#COMPILER_DIR_REL       := $(COMPILER_PARENT_DIR)/$(COMPILER_DIR)
-#COMPILER_DIR_ABS       := $(abspath $(COMPILER_DIR_REL))
-#COMPILER_PACKAGE       := $(subst $(ccolon),gcc,$(subst .,p,$(COMPILER_DIR)))
+COMPILER_PARENT_DIR    := ../../ThirdParty/Compiler
+COMPILER_DIR           := $(firstword $(subst /, ,$(subst $(COMPILER_PARENT_DIR),,$(CC))))
+COMPILER_DIR_REL       := $(COMPILER_PARENT_DIR)/$(COMPILER_DIR)
+COMPILER_DIR_ABS       := $(abspath $(COMPILER_DIR_REL))
+COMPILER_PACKAGE       := $(subst $(ccolon),gcc,$(subst .,p,$(COMPILER_DIR)))
 
-ifdef APP_SOURCE_LST
-sourcefiles            := $(subst ../src/,,$(subst ../Src/,,$(APP_SOURCE_LST)))
+ifdef VC_SRC_LIST
+sourcefiles            := $(subst ../src/,,$(subst ../Src/,,$(VC_SRC_LIST)))
 else
 sourcefiles            := $(subst $(abspath $(MQ_PROJECT_ROOT))/,,$(abspath $(SRC) $(ASM)))
 endif
 ifdef CPPFLAGS_INC_LIST
 include_paths          := $(subst ../src/,,$(subst ../Src/,,$(subst -I,,$(CPPFLAGS_INC_LIST))))
 else
-include_paths          := $(subst $(abspath $(MQ_PROJECT_ROOT))/,,$(abspath $(INCLUDE_PATH)))
+include_paths          := $(subst $(COMPILER_DIR_ABS),$${COMPILER_PATH},$(subst $(abspath $(MQ_PROJECT_ROOT))/,,$(abspath $(INCLUDE_PATH))))
 endif
 # Currently we do not need this.
 # include_paths          := $(call uniq,$(patsubst %/,%,$(dir $(sourcefiles)) $(include_paths)))

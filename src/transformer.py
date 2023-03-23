@@ -89,30 +89,13 @@ class Transformer:
 
     def create_cmake_project(self):
         self.logger.info("create project file")
-        (self.config.output_dir / "variants" /
-         self.config.variant).mkdir(parents=True, exist_ok=True)
-        (self.config.output_dir / "legacy" /
-         self.config.variant).mkdir(parents=True, exist_ok=True)
-        (self.config.output_dir /
-         "tools/toolchains/gcc").mkdir(parents=True, exist_ok=True)
-        (self.config.output_dir / "tools/toolchains/comp_201754").mkdir(
-            parents=True, exist_ok=True
-        )
-        (self.config.output_dir / "tools/toolchains/comp_201914").mkdir(
-            parents=True, exist_ok=True
-        )
-        (self.config.output_dir / "tools/toolchains/TriCore_v6p2r2p2").mkdir(
-            parents=True, exist_ok=True
-        )
-        (self.config.output_dir / "tools/toolchains/TriCore_v6p3r1").mkdir(
-            parents=True, exist_ok=True
-        )
+        self.create_folder_structure()
 
-        # run twice to get properties file first
         self.run_collect_mak()
 
-        variant_parts_path = self.config.output_dir / \
-            "variants" / self.config.variant / "parts.cmake"
+        variant_parts_path = (
+            self.config.output_dir / "variants" / self.config.variant / "parts.cmake"
+        )
         with open(variant_parts_path, "a") as f:
             for root, dirs, files in os.walk(
                 self.config.output_dir / "variants" / self.config.variant / "Lib"
@@ -129,6 +112,29 @@ class Transformer:
                                 rel_path
                             )
                         )
+
+    def create_folder_structure(self):
+        (self.config.output_dir / "variants" / self.config.variant).mkdir(
+            parents=True, exist_ok=True
+        )
+        (self.config.output_dir / "legacy" / self.config.variant).mkdir(
+            parents=True, exist_ok=True
+        )
+        (self.config.output_dir / "tools/toolchains/gcc").mkdir(
+            parents=True, exist_ok=True
+        )
+        (self.config.output_dir / "tools/toolchains/comp_201754").mkdir(
+            parents=True, exist_ok=True
+        )
+        (self.config.output_dir / "tools/toolchains/comp_201914").mkdir(
+            parents=True, exist_ok=True
+        )
+        (self.config.output_dir / "tools/toolchains/TriCore_v6p2r2p2").mkdir(
+            parents=True, exist_ok=True
+        )
+        (self.config.output_dir / "tools/toolchains/TriCore_v6p3r1").mkdir(
+            parents=True, exist_ok=True
+        )
 
     def run_collect_mak(self):
         subprocess.run(
@@ -151,8 +157,9 @@ class Transformer:
         )
 
     def copy_linker_definition(self):
-        bld_cfg_out = self.config.output_dir / \
-            "variants" / self.config.variant / "Bld/Cfg"
+        bld_cfg_out = (
+            self.config.output_dir / "variants" / self.config.variant / "Bld/Cfg"
+        )
         mirror_tree(self.config.input_dir / "Impl/Bld/Cfg", bld_cfg_out)
         for path, dirs, files in os.walk(os.path.abspath(bld_cfg_out)):
             for filename in files:
@@ -166,7 +173,8 @@ class Transformer:
                         )
                         continue
                 s = s.replace(
-                    "../../Src", "../../../../../legacy/" + self.config.variant)
+                    "../../Src", "../../../../../legacy/" + self.config.variant
+                )
                 with open(filepath, "w") as f:
                     f.write(s)
 
@@ -301,7 +309,7 @@ def create_argument_parser(argv=None):
 
 def main() -> int:
     arguments = create_argument_parser()
-    if (arguments["--config"]):
+    if arguments["--config"]:
         config = TransformerConfig.from_json_file(Path(arguments["--config"]))
     else:
         config = TransformerConfig(

@@ -13,7 +13,7 @@ $(foreach v, \
  )
 
 # TODO: replace everything below with Python
-exit 0
+ifdef GENERATE_CMAKE_FILES
 
 # make a list's elements uniq
 define uniq =
@@ -149,6 +149,8 @@ endif
 ifneq (,$(findstring TriCore_v6,$(COMPILER_PACKAGE)))
 $(file >>$(TOOLCHAIN_CMAKE_FILE),set(CMAKE_C_LINK_EXECUTABLE "$${COMPILER_PATH}/ctc/bin/ltc.exe -o <TARGET> <OBJECTS> <LINK_FLAGS>"))
 endif
+
+endif # ifdef GENERATE_CMAKE_FILES
 
 .PHONY: collect
 

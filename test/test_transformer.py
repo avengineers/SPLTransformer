@@ -320,3 +320,22 @@ spl_add_source(component_a/component_a.c)
 """
         == cmake_file_content
     )
+
+
+def test_parse_make_variables_dump_file():
+    content = """PIPENV_VERBOSITY = -1
+<D = 
+?F = 
+ASFLAGS_CUSTOMER_OPTIONS = 
+MY_INCLUDES = -I../ABC/path -I../IMPL/path
+GENERATED_SOURCE_FILES = Impl\GenData\Rte.c Impl\GenData\ComXf.c Impl\GenData\E2EXf_LCfg.c
+"""
+    make_dump = Transformer.parse_make_variables_dump_file(content)
+    assert len(make_dump.keys()) == 4
+    assert make_dump["MY_INCLUDES".lower()] == "-I../ABC/path -I../IMPL/path"
+
+
+def test_search_include_paths():
+    includes_str = "-I../ABC/path -I../IMPL/path"
+    includes = Transformer.extract_include_paths(includes_str)
+    assert includes == ["../ABC/path", "../IMPL/path"]

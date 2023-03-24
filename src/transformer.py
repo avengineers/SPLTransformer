@@ -15,10 +15,12 @@ Options:
 
 """
 
+import configparser
 from dataclasses import dataclass
 import glob
+import re
 import sys
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Union
 import dacite
 from docopt import docopt
 import logging
@@ -78,7 +80,15 @@ class Transformer:
     def variant(self) -> str:
         return self.config.variant
 
+    @property
+    def make_dump_file(self) -> Path:
+        """$(OUT_PATH)/variants/$(VARIANT)/original_make_vars.txt"""
+        return self.output_dir / "variants" / self.variant / "original_make_vars.txt"
+
     def run(self):
+        self.create_folder_structure()
+        self.create_legacy_make_variables_dump_file()
+        self.extract_legacy_build_system_configuration()
         self.copy_source_files()
         self.copy_libs()
         self.copy_vscode_files()
@@ -87,17 +97,12 @@ class Transformer:
         self.copy_config()
         self.create_variant_json()
 
-    def create_cmake_project(self):
-        self.logger.info("create project file")
-        self.create_folder_structure()
-
-        self.run_collect_mak()
-
+    def create_cmake_project(self) -> None:
         variant_parts_path = (
             self.config.output_dir / "variants" / self.config.variant / "parts.cmake"
         )
         with open(variant_parts_path, "a") as f:
-            for root, dirs, files in os.walk(
+            for root, _, files in os.walk(
                 self.config.output_dir / "variants" / self.config.variant / "Lib"
             ):
                 for file in files:
@@ -113,7 +118,7 @@ class Transformer:
                             )
                         )
 
-    def create_folder_structure(self):
+    def create_folder_structure(self) -> None:
         (self.config.output_dir / "variants" / self.config.variant).mkdir(
             parents=True, exist_ok=True
         )
@@ -135,6 +140,48 @@ class Transformer:
         (self.config.output_dir / "tools/toolchains/TriCore_v6p3r1").mkdir(
             parents=True, exist_ok=True
         )
+
+    def create_legacy_make_variables_dump_file(self) -> None:
+        # include the legacy makefile and save all make variables
+        self.run_collect_mak()
+
+    def extract_legacy_build_system_configuration(self) -> Dict:
+        if not self.make_dump_file.exists():
+            raise FileNotFoundError(f"File {self.make_dump_file} was not generated.")
+        return self.parse_make_variables_dump_file(self.make_dump_file)
+
+    @staticmethod
+    def parse_make_variables_dump_file(
+        make_variables_dump_file: Union[str, Path]
+    ) -> Dict:
+        content = (
+            make_variables_dump_file
+            if isinstance(make_variables_dump_file, str)
+            else make_variables_dump_file.read_text()
+        )
+        content = "[dummy_section]\n" + content
+        config = configparser.ConfigParser()
+        # Read the ini file contents from the string
+        config.read_string(content)
+        # Get all the options in the dummy section
+        options = config.options("dummy_section")
+        make_variables = {}
+        for option in options:
+            # Check if the option name contains special characters
+            if not re.match("^[a-zA-Z0-9_]*$", option):
+                continue
+            value = config.get("dummy_section", option)
+            make_variables[option] = value
+        return make_variables
+
+    @staticmethod
+    def extract_include_paths(include_args: str) -> List[str]:
+        # Define a regular expression to match the include paths
+        pattern = r'-I\s*([^"\s]+)'
+        # Find all the matches in the include arguments string
+        matches = re.findall(pattern, include_args)
+        # Return the list of include paths
+        return matches
 
     def run_collect_mak(self):
         subprocess.run(

@@ -1,31 +1,37 @@
 #!/usr/bin/env python3
 
-import json
 import os
 import subprocess
 import tempfile
 import unittest
 import shutil
-from dacite import MissingValueError
 from docopt import DocoptExit
 
 import pytest
-from transformer import TransformerConfig, Transformer, create_argument_parser
+from transformer import (
+    LegacyBuildSystem,
+    TransformerConfig,
+    Transformer,
+    Variant,
+    create_argument_parser,
+)
 from pathlib import Path
 from utils import read_file
 
 
 @pytest.fixture
-def create_new_transformer(request) -> Transformer:
+def new_transformer(request) -> Transformer:
     output_dir = Path("output/test")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Create a temporary directory inside the output directory
     tmp_path = Path(tempfile.mkdtemp(dir=output_dir))
     project_name = request.param if request.param else "prj1"
-    variant = "MY/VAR"
+    variant = Variant("MY", "VAR")
     transformer = Transformer(
-        TransformerConfig(Path(f"test/data/{project_name}"), tmp_path, variant)
+        TransformerConfig(
+            Path(f"test/data/{project_name}").absolute(), tmp_path, variant
+        )
     )
 
     # Return the path to the temporary directory
@@ -39,9 +45,9 @@ class TestTransformer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.maxDiff = None
-        cls.in_path = Path("test/data/prj1")
-        cls.out_path = Path("output/test")
-        cls.variant = "MQ_123/TEST"
+        cls.in_path = Path("test/data/prj1").absolute()
+        cls.out_path = Path("output/test").absolute()
+        cls.variant = Variant("MQ_123", "TEST")
         cls.transformer = Transformer(
             TransformerConfig(
                 cls.in_path.resolve(), cls.out_path.resolve(), cls.variant
@@ -67,7 +73,7 @@ class TestTransformer(unittest.TestCase):
         self.assertTrue(
             (
                 TestTransformer.out_path
-                / "variants/{}/Bld/Cfg/Linker.ld".format(TestTransformer.variant)
+                / f"variants/{TestTransformer.variant}/Bld/Cfg/Linker.ld"
             ).exists()
         )
 
@@ -77,7 +83,7 @@ class TestTransformer(unittest.TestCase):
         eb_tresos_start_script = (
             TestTransformer.out_path
             / "variants"
-            / TestTransformer.variant
+            / f"{TestTransformer.variant}"
             / "Cfg/MCAL/EB-Tresos.bat"
         )
         self.assertTrue(eb_tresos_start_script.exists())
@@ -86,7 +92,7 @@ class TestTransformer(unittest.TestCase):
         davinci_project_file = (
             TestTransformer.out_path
             / "variants"
-            / TestTransformer.variant
+            / f"{TestTransformer.variant}"
             / "Cfg/Autosar/HV_Sensor.dpa"
         )
         self.assertTrue(davinci_project_file.exists())
@@ -98,7 +104,7 @@ class TestTransformer(unittest.TestCase):
         self.assertIn(">..\\..\\..\\..\\..\\build\\deps\\CBD123456", content)
         self.assertIn(
             ">..\\..\\..\\..\\..\\legacy\\{variant}\\Bsw\\GenData".format(
-                variant=TestTransformer.variant.replace("/", "\\")
+                variant=TestTransformer.variant.to_string("\\")
             ),
             content,
         )
@@ -109,8 +115,7 @@ class TestTransformer(unittest.TestCase):
         self.assertTrue(
             (
                 TestTransformer.out_path
-                / "variants"
-                / TestTransformer.variant
+                / f"variants/{TestTransformer.variant}"
                 / "Lib/customer1/libspl.a"
             ).exists()
         )
@@ -122,12 +127,11 @@ class TestTransformer(unittest.TestCase):
             variant_file.unlink()
         except:
             pass
-        TestTransformer.transformer.create_variant_json("Variant_1/sub1")
+        TestTransformer.transformer.create_variant_json(Variant("Variant_1", "sub1"))
         self.assertTrue(variant_file.exists())
 
-        content = read_file(variant_file)
         self.assertEqual(
-            content,
+            variant_file.read_text(),
             """{
   "variant": {
     "choices": {
@@ -150,9 +154,8 @@ class TestTransformer(unittest.TestCase):
         """will add a new entry if existing"""
         self.assertTrue(variant_file.exists())
         TestTransformer.transformer.create_variant_json()
-        content = read_file(variant_file)
         self.assertEqual(
-            content,
+            variant_file.read_text(),
             """{
   "variant": {
     "choices": {
@@ -199,11 +202,9 @@ class TestTransformer(unittest.TestCase):
         self.assertTrue(
             (
                 TestTransformer.out_path
-                / "build/{variant}/prod/main.exe".format(
-                    variant=TestTransformer.variant
-                )
-            ).exists()
-        )
+                / f"build/{TestTransformer.variant}/prod/main.exe"
+            )
+        ).exists()
 
 
 def test_argument_parser():
@@ -247,32 +248,33 @@ def test_copy_source_files(input_dir, output_dir, source_dir_rel):
         assert (output_path / file_path).exists()
 
 
-@pytest.mark.parametrize("create_new_transformer", ["prj1"], indirect=True)
-def test_cmake_project_creation(create_new_transformer: Transformer):
-    transformer = create_new_transformer
+@pytest.mark.parametrize("new_transformer", ["prj1"], indirect=True)
+def test_cmake_project_creation(new_transformer: Transformer):
+    transformer = new_transformer
     out_path = transformer.output_dir
     variant = transformer.variant
 
-    transformer.copy_libs()
-    transformer.create_cmake_project()
+    make_dump = "CPPFLAGS_INC_LIST = -I../../MQ_123/TEST/component_a -I../../MQ_123/TEST/include_dir"
 
-    cmake_list_file = out_path / "variants" / variant / "parts.cmake"
+    transformer.copy_libs()
+    transformer.create_cmake_project(LegacyBuildSystem(make_dump, transformer.config))
+
+    cmake_list_file = transformer.variant_dir / "parts.cmake"
     assert cmake_list_file.is_file()
     cmake_file_content = read_file(cmake_list_file)
     assert (
-        f"""# Generated by Transformer
+        """# Generated by Transformer
 spl_add_include(/legacy/MQ_123/TEST/component_a)
 spl_add_include(/legacy/MQ_123/TEST/include_dir)
 
-spl_add_component(legacy/{variant})
+spl_add_component(legacy/MY/VAR)
+target_link_libraries(${{LINK_TARGET_NAME}} ${{CMAKE_CURRENT_LIST_DIR}}/Lib/AnyAG/libspl.a)
 target_link_libraries(${{LINK_TARGET_NAME}} ${{CMAKE_CURRENT_LIST_DIR}}/Lib/customer1/libspl.a)
 """
         == cmake_file_content
     )
 
-    toolchain_cmake_file = out_path / "tools/toolchains/gcc/toolchain.cmake".format(
-        variant
-    )
+    toolchain_cmake_file = out_path / "tools/toolchains/gcc/toolchain.cmake"
     assert toolchain_cmake_file.is_file()
     toolchain_cmake_content = read_file(toolchain_cmake_file)
     scoop_dir = os.environ["USERPROFILE"] + "/scoop"
@@ -320,22 +322,3 @@ spl_add_source(component_a/component_a.c)
 """
         == cmake_file_content
     )
-
-
-def test_parse_make_variables_dump_file():
-    content = """PIPENV_VERBOSITY = -1
-<D = 
-?F = 
-ASFLAGS_CUSTOMER_OPTIONS = 
-MY_INCLUDES = -I../ABC/path -I../IMPL/path
-GENERATED_SOURCE_FILES = Impl\GenData\Rte.c Impl\GenData\ComXf.c Impl\GenData\E2EXf_LCfg.c
-"""
-    make_dump = Transformer.parse_make_variables_dump_file(content)
-    assert len(make_dump.keys()) == 4
-    assert make_dump["MY_INCLUDES".lower()] == "-I../ABC/path -I../IMPL/path"
-
-
-def test_search_include_paths():
-    includes_str = "-I../ABC/path -I../IMPL/path"
-    includes = Transformer.extract_include_paths(includes_str)
-    assert includes == ["../ABC/path", "../IMPL/path"]

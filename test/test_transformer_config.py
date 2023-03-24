@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from transformer import TransformerConfig
+from transformer import TransformerConfig, Variant
 
 
 def test_read_config(tmp_path: Path):
@@ -20,7 +20,7 @@ def test_read_config(tmp_path: Path):
     assert TransformerConfig(
         input_dir=Path("C:/my/in_dir"),
         output_dir=Path("C:/my/out_dir"),
-        variant="MY/VAR",
+        variant=Variant("MY", "VAR"),
     ) == TransformerConfig.from_json_file(tmp_json_file)
 
 
@@ -41,6 +41,6 @@ def test_read_full_config(tmp_path: Path):
     assert TransformerConfig(
         input_dir=Path("C:/my/in_dir"),
         output_dir=Path("C:/my/out_dir"),
-        variant="MY/VAR",
+        variant=Variant("MY", "VAR"),
         source_dir_rel="SRC_LIST",
     ) == TransformerConfig.from_json_file(tmp_json_file)

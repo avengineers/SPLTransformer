@@ -4,8 +4,7 @@ from pathlib import Path
 from transformer import TransformerConfig, Variant
 
 
-def test_read_config(tmp_path: Path):
-    # Create a sample dictionary
+def test_mandatory_config_json(tmp_path: Path):
     data = {
         "input_dir": "C:/my/in_dir",
         "output_dir": "C:/my/out_dir",
@@ -24,13 +23,12 @@ def test_read_config(tmp_path: Path):
     ) == TransformerConfig.from_json_file(tmp_json_file)
 
 
-def test_read_full_config(tmp_path: Path):
-    # Create a sample dictionary
+def test_full_optional_config(tmp_path: Path):
     data = {
         "input_dir": "C:/my/in_dir",
         "output_dir": "C:/my/out_dir",
         "variant": "MY/VAR",
-        "source_dir_rel": "SRC_LIST",
+        "source_dir_rel": "someRelativeSourceDirectory",
     }
 
     # Write the dictionary to a JSON file
@@ -42,5 +40,5 @@ def test_read_full_config(tmp_path: Path):
         input_dir=Path("C:/my/in_dir"),
         output_dir=Path("C:/my/out_dir"),
         variant=Variant("MY", "VAR"),
-        source_dir_rel="SRC_LIST",
+        source_dir_rel="someRelativeSourceDirectory",
     ) == TransformerConfig.from_json_file(tmp_json_file)

@@ -9,6 +9,7 @@ docopt-ng = "*"
 autopep8 = "*"
 pipenv = "*"
 dacite = "*"
+black = "*"
 
 [dev-packages]
 pytest = "*"

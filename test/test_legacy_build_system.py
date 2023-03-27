@@ -11,16 +11,33 @@ def test_parse_make_variables_dump_file():
 ASFLAGS_CUSTOMER_OPTIONS = 
 MY_INCLUDES = -I../ABC/path -I../IMPL/path
 GENERATED_SOURCE_FILES = Impl\GenData\Rte.c Impl\GenData\ComXf.c Impl\GenData\E2EXf_LCfg.c
+COMPILE.c = gcc
+COMPILE.C = g++
+AR_RULE = Output/lib/lib.a:   Output/lib/.dirstamp
+	@echo "AR         lib.a"
+ifeq (1,1)
+	@echo " - sources:  "
+endif
+	@rm -f 
+	 ./../COMMON/Compiler/ctc/bin/artc -cr Output/lib/lib.a  
 """
-    make_dump = LegacyBuildSystem.parse_make_variables_dump(content)
-    assert len(make_dump.keys()) == 4
-    assert make_dump["MY_INCLUDES".lower()] == "-I../ABC/path -I../IMPL/path"
+    make_dump = LegacyBuildSystem.parse_make_var_dump(content)
+    assert len(make_dump.keys()) == 9
+    assert make_dump["MY_INCLUDES"] == "-I../ABC/path -I../IMPL/path"
+    assert make_dump["COMPILE.c"] == "gcc"
+    assert make_dump["COMPILE.C"] == "g++"
 
 
-def test_search_include_paths():
+def test_extract_include_paths():
     includes_str = "-I../ABC/path -I../IMPL/path"
     includes = LegacyBuildSystem.extract_include_paths(includes_str)
     assert includes == ["../ABC/path", "../IMPL/path"]
+
+
+def test_extract_sources_path():
+    sources_str = "   ../ABC/src.c ../IMPL/src.c    ../IMPL/src2.c"
+    sources = LegacyBuildSystem.extract_source_paths(sources_str)
+    assert sources == ["../ABC/src.c", "../IMPL/src.c", "../IMPL/src2.c"]
 
 
 def test_get_includes():

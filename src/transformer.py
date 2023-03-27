@@ -15,12 +15,12 @@ Options:
 
 """
 
-import configparser
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import glob
 import re
 import sys
-from typing import Dict, List, Optional, Protocol, Union
+from typing import Dict, List, Optional, Union
 import dacite
 from docopt import docopt
 import logging
@@ -57,10 +57,11 @@ class TransformerConfig:
     input_dir: Path
     output_dir: Path
     variant: Variant
-    source_dir_rel: Optional[str] = "Impl/Src"
-    build_dir_rel: Optional[str] = "Impl/Bld"
-    third_party_libs_dir_rel: Optional[str] = "ThirdParty"
-    includes_var: Optional[str] = "CPPFLAGS_INC_LIST"
+    source_dir_rel: str = "Impl/Src"
+    build_dir_rel: str = "Impl/Bld"
+    third_party_libs_dir_rel: str = "ThirdParty"
+    includes_var: str = "CPPFLAGS_INC_LIST"
+    sources_var: str = "VC_SRC_LIST"
 
     @classmethod
     def from_json_file(cls, file: Path):
@@ -91,7 +92,7 @@ class LegacyBuildSystem:
     def __init__(
         self, make_variables_dump: Union[str, Path], config: TransformerConfig
     ) -> None:
-        self.make_variables: Dict[str, str] = self.parse_make_variables_dump(
+        self.make_variables: Dict[str, str] = self.parse_make_var_dump(
             make_variables_dump
         )
         self.config = config
@@ -105,7 +106,7 @@ class LegacyBuildSystem:
         return self.config.input_dir / self.config.third_party_libs_dir_rel
 
     def get_variable(self, var_name: str) -> Optional[str]:
-        return self.make_variables.get(var_name.lower(), None)
+        return self.make_variables.get(var_name, None)
 
     def get_include_paths(self) -> List[Path]:
         includes_arg = self.get_variable(self.config.includes_var)
@@ -118,32 +119,42 @@ class LegacyBuildSystem:
             ]
         return []
 
+    def get_source_paths(self) -> List[Path]:
+        sources = self.get_variable(self.config.sources_var)
+        if sources:
+            return [
+                self.build_dir.joinpath(src)
+                .resolve(strict=False)
+                .relative_to(self.config.input_dir)
+                for src in self.extract_source_paths(sources)
+            ]
+        return []
+
     def get_thirdparty_libs(self) -> List[Path]:
         libraries = list(self.third_party_dir.glob("**/*.a"))
         libraries.extend(list(self.third_party_dir.glob("**/*.lib")))
         return [lib.relative_to(self.third_party_dir) for lib in libraries]
 
     @staticmethod
-    def parse_make_variables_dump(make_variables_dump: Union[str, Path]) -> Dict:
+    def parse_make_var_dump(make_variables_dump: Union[str, Path]) -> Dict:
         content = (
             make_variables_dump
             if isinstance(make_variables_dump, str)
             else make_variables_dump.read_text()
         )
-        content = "[dummy_section]\n" + content
-        config = configparser.ConfigParser()
-        # Read the ini file contents from the string
-        config.read_string(content)
-        # Get all the options in the dummy section
-        options = config.options("dummy_section")
-        make_variables = {}
-        for option in options:
-            # Check if the option name contains special characters
-            if not re.match("^[a-zA-Z0-9_]*$", option):
-                continue
-            value = config.get("dummy_section", option)
-            make_variables[option] = value
-        return make_variables
+        return LegacyBuildSystem.create_dict_from_multiline_str(content)
+
+    @staticmethod
+    def create_dict_from_multiline_str(multiline_str):
+        lines = multiline_str.split("\n")
+        filtered_lines = [line for line in lines if "=" in line]
+        result_dict = {}
+        for line in filtered_lines:
+            # Split the line at the first equal sign
+            key, value = line.split("=", 1)
+            # Store the key-value pair after stripping any extra spaces
+            result_dict[key.strip()] = value.strip()
+        return result_dict
 
     @staticmethod
     def extract_include_paths(includes_args: str) -> List[str]:
@@ -154,11 +165,24 @@ class LegacyBuildSystem:
         # Return the list of include paths
         return matches
 
+    @staticmethod
+    def extract_source_paths(sources: str) -> List[str]:
+        # Remove any leading or trailing whitespace from the input string
+        sources_str = sources.strip()
+        # Split the input string into a list of individual paths
+        # using one or more whitespace characters as the delimiter
+        sources_str = re.split("\s+", sources_str)
 
-class FileGenerator(Protocol):
+        return sources_str
+
+
+class FileGenerator(ABC):
     def to_file(self, file: Path) -> None:
-        """Write content to file"""
+        file.parent.mkdir(parents=True, exist_ok=True)
+        with open(file, "w") as f:
+            f.write(self.to_string())
 
+    @abstractmethod
     def to_string(self) -> str:
         """Dump content to string"""
 
@@ -168,10 +192,6 @@ class VariantPartsCMakeGenerator(FileGenerator):
     include_paths: List[Path]
     third_party_libs: List[Path]
     variant: Variant
-
-    def to_file(self, file: Path) -> None:
-        with open(file, "w") as f:
-            f.write(self.to_string())
 
     def to_string(self) -> str:
         return "\n".join(
@@ -187,17 +207,33 @@ class VariantPartsCMakeGenerator(FileGenerator):
 
     def cmake_includes(self) -> str:
         return "\n".join(
-            [f"spl_add_include(/legacy/{inc.as_posix()})" for inc in self.include_paths]
+            [
+                f"spl_add_include(${{PROJECT_SOURCE_DIR}}/legacy/${{VARIANT}}/{inc.as_posix()})"
+                for inc in self.include_paths
+            ]
         )
 
     def cmake_link_libraries(self) -> str:
         return "\n".join(
             [
-                "target_link_libraries(${{LINK_TARGET_NAME}} ${{CMAKE_CURRENT_LIST_DIR}}/Lib/"
+                "target_link_libraries(${LINK_TARGET_NAME} ${CMAKE_CURRENT_LIST_DIR}/Lib/"
                 + lib.as_posix()
                 + ")"
                 for lib in self.third_party_libs
             ]
+        )
+
+
+@dataclass
+class LegacyPartsCMakeGenerator(FileGenerator):
+    sources: List[Path]
+
+    def to_string(self) -> str:
+        return "\n".join(["# Generated by Transformer", self.cmake_sources(), ""])
+
+    def cmake_sources(self) -> str:
+        return "\n".join(
+            [f"spl_add_source({source.as_posix()})" for source in self.sources]
         )
 
 
@@ -223,6 +259,10 @@ class Transformer:
         return self.config.variant
 
     @property
+    def legacy_dir(self) -> Path:
+        return self.output_dir.joinpath(f"legacy/{self.variant}")
+
+    @property
     def variant_dir(self) -> Path:
         return self.output_dir.joinpath(f"variants/{self.variant}")
 
@@ -233,6 +273,10 @@ class Transformer:
     @property
     def variant_parts_cmake_file(self) -> Path:
         return self.variant_dir / "parts.cmake"
+
+    @property
+    def legacy_parts_cmake_file(self) -> Path:
+        return self.legacy_dir / "parts.cmake"
 
     def run(self):
         self.create_folder_structure()
@@ -251,19 +295,26 @@ class Transformer:
             legacy_build_system.get_thirdparty_libs(),
             self.variant,
         ).to_file(self.variant_parts_cmake_file)
+        LegacyPartsCMakeGenerator(legacy_build_system.get_source_paths()).to_file(
+            self.legacy_parts_cmake_file
+        )
 
     def create_folder_structure(self) -> None:
-        self.variant_dir.mkdir(parents=True, exist_ok=True)
-
-        for dir in [
-            f"legacy/{self.variant}",
+        variant_and_legacy_folders = [self.variant_dir, self.legacy_dir]
+        toolchain_folders = [
             "tools/toolchains/gcc",
             "tools/toolchains/comp_201754",
             "tools/toolchains/comp_201914",
             "tools/toolchains/TriCore_v6p2r2p2",
             "tools/toolchains/TriCore_v6p3r1",
-        ]:
-            self.config.output_dir.joinpath(dir).mkdir(parents=True, exist_ok=True)
+        ]
+
+        toolchain_paths = [
+            self.config.output_dir.joinpath(folder) for folder in toolchain_folders
+        ]
+
+        for folder in variant_and_legacy_folders + toolchain_paths:
+            folder.mkdir(parents=True, exist_ok=True)
 
     def create_legacy_make_variables_dump_file(self) -> None:
         # include the legacy makefile and save all make variables
@@ -276,7 +327,7 @@ class Transformer:
                 self.config.input_dir,
                 self.config.output_dir,
                 self.config.build_dir_rel,
-                self.config.variant,
+                self.config.variant.to_string(),
             ]
         )
 

@@ -73,7 +73,7 @@ class VariantPartsCMakeGenerator(FileGenerator):
     def replace(self, path: Path) -> str:
         replacer = PathSearchAndReplace(
             self.subdir_extra_replacements
-            + [SubdirReplacement("/", "${PROJECT_SOURCE_DIR}/legacy/${VARIANT}")]
+            + [SubdirReplacement("/", "${PROJECT_SOURCE_DIR}/legacy/${VARIANT}/src")]
         )
         return replacer.replace_path(path).as_posix()
 
@@ -224,7 +224,7 @@ class Transformer:
     def copy_source_files(self):
         mirror_tree(
             self.config.input_dir / self.config.source_dir_rel,
-            self.config.output_dir / f"legacy/{self.config.variant}",
+            self.config.output_dir / f"legacy/{self.config.variant}/src",
         )
 
     def copy_linker_definition(self):
@@ -242,7 +242,7 @@ class Transformer:
                         )
                         continue
                 s = s.replace(
-                    "../../Src", f"../../../../../legacy/{self.config.variant}"
+                    "../../Src", f"../../../../../legacy/{self.config.variant}/src"
                 )
                 with open(filepath, "w") as f:
                     f.write(s)

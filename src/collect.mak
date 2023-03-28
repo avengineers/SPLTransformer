@@ -12,7 +12,7 @@ $(foreach v, \
       $(file >>$(MAKE_VARS_FILE),$(v) = $($(v))) \
  )
 
-# TODO: replace everything below with Python
+# code below is disabled and obsolete
 ifdef GENERATE_CMAKE_FILES
 
 # make a list's elements uniq

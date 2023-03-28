@@ -238,10 +238,10 @@ def test_copy_source_files(input_dir, output_dir, source_dir_rel):
     transformer.copy_source_files()
 
     files_to_check = [
-        f"legacy/{variant}/main.c",
-        f"legacy/{variant}/component_a/component_a.c",
-        f"legacy/{variant}/component_a/component_a.h",
-        f"legacy/{variant}/include_dir/header.h",
+        f"legacy/{variant}/src/main.c",
+        f"legacy/{variant}/src/component_a/component_a.c",
+        f"legacy/{variant}/src/component_a/component_a.h",
+        f"legacy/{variant}/src/include_dir/header.h",
     ]
 
     for file_path in files_to_check:

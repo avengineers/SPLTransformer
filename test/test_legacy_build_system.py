@@ -51,6 +51,19 @@ def test_get_includes():
     ]
 
 
+def test_get_sources():
+    make_var_dump = "VC_SRC_LIST = ../COMMON/file1.c IMPL/src/main.c"
+    input_dir = Path("X:/in")
+    config = TransformerConfig(input_dir, Path("X:/out"), "my/var")
+    config.build_dir_rel = "BLD"
+    config.source_dir_rel = "BLD/IMPL"
+    legacy_build = LegacyBuildSystem(make_var_dump, config)
+    assert legacy_build.get_source_paths() == [
+        Path("COMMON/file1.c"),
+        Path("src/main.c"),
+    ]
+
+
 def test_get_thirdparty_libs(tmp_path):
     third_party_dir = tmp_path / "ThirdParty"
     third_party_dir.mkdir()

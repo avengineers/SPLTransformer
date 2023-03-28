@@ -126,14 +126,25 @@ class LegacyBuildSystem:
 
     def get_source_paths(self) -> List[Path]:
         sources = self.get_variable(self.config.sources_var)
+        result = []
         if sources:
-            return [
-                self.sources_dir.joinpath(src)
-                .resolve(strict=False)
-                .relative_to(self.sources_dir)
-                for src in self.extract_source_paths(sources)
-            ]
-        return []
+            for src in self.extract_source_paths(sources):
+                try:
+                    source_path = (
+                        self.build_dir.joinpath(src)
+                        .resolve(strict=False)
+                        .relative_to(self.sources_dir)
+                    )
+                # For sources which are not inside the configured source folder,
+                # expect them to be relative to the root folder.
+                except ValueError:
+                    source_path = (
+                        self.build_dir.joinpath(src)
+                        .resolve(strict=False)
+                        .relative_to(self.config.input_dir)
+                    )
+                result.append(source_path)
+        return result
 
     def get_thirdparty_libs(self) -> List[Path]:
         libraries = list(self.third_party_dir.glob("**/*.a"))
@@ -283,7 +294,7 @@ class Transformer:
 
     @property
     def legacy_variant_dir(self) -> Path:
-        return self.legacy_dir.joinpath(f"legacy/{self.variant}")
+        return self.legacy_dir.joinpath(f"{self.variant}")
 
     @property
     def variant_dir(self) -> Path:

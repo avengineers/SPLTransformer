@@ -1,7 +1,6 @@
 from pathlib import Path
-
-import pytest
-from transformer import LegacyBuildSystem, TransformerConfig
+from TransformerConfig import TransformerConfig
+from transformer import LegacyBuildSystem
 
 
 def test_parse_make_variables_dump_file():

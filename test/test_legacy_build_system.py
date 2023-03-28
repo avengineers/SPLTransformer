@@ -40,13 +40,18 @@ def test_extract_sources_path():
 
 
 def test_get_includes():
-    make_var_dump = "CPPFLAGS_INC_LIST = -I../ABC/bla -I../IMPL/foo"
-    config = TransformerConfig(Path("X:/in"), Path("X:/out"), "my/var")
-    config.build_dir_rel = "bld1/bld2"
+    make_var_dump = (
+        "CPPFLAGS_INC_LIST = -I../COMMON/BLA/CompX -I../COMMON/BLU/CompY -IIMPL/foo"
+    )
+    input_dir = Path("X:/in")
+    config = TransformerConfig(input_dir, Path("X:/out"), "my/var")
+    config.build_dir_rel = "BLD"
+    config.source_dir_rel = "BLD/IMPL"
     legacy_build = LegacyBuildSystem(make_var_dump, config)
     assert legacy_build.get_include_paths() == [
-        Path("bld1/ABC/bla"),
-        Path("bld1/IMPL/foo"),
+        Path("COMMON/BLA/CompX"),
+        Path("COMMON/BLU/CompY"),
+        Path("foo"),
     ]
 
 

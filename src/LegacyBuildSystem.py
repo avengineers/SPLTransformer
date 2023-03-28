@@ -32,36 +32,33 @@ class LegacyBuildSystem:
         return self.make_variables.get(var_name, None)
 
     def get_include_paths(self) -> List[Path]:
-        includes_arg = self.get_variable(self.config.includes_var)
-        if includes_arg:
-            return [
-                self.build_dir.joinpath(inc)
-                .resolve(strict=False)
-                .relative_to(self.config.input_dir)
-                for inc in self.extract_include_paths(includes_arg)
-            ]
-        return []
+        return self.relativize_paths(
+            self.extract_include_paths(self.get_variable(self.config.includes_var))
+        )
 
     def get_source_paths(self) -> List[Path]:
-        sources = self.get_variable(self.config.sources_var)
+        return self.relativize_paths(
+            self.extract_source_paths(self.get_variable(self.config.sources_var))
+        )
+
+    def relativize_paths(self, paths: List[Path]) -> List[Path]:
         result = []
-        if sources:
-            for src in self.extract_source_paths(sources):
-                try:
-                    source_path = (
-                        self.build_dir.joinpath(src)
-                        .resolve(strict=False)
-                        .relative_to(self.sources_dir)
-                    )
-                # For sources which are not inside the configured source folder,
-                # expect them to be relative to the root folder.
-                except ValueError:
-                    source_path = (
-                        self.build_dir.joinpath(src)
-                        .resolve(strict=False)
-                        .relative_to(self.config.input_dir)
-                    )
-                result.append(source_path)
+        for path in paths:
+            try:
+                rel_path = (
+                    self.build_dir.joinpath(path)
+                    .resolve(strict=False)
+                    .relative_to(self.sources_dir)
+                )
+            # For paths which are not inside the configured build folder,
+            # expect them to be relative to the root folder.
+            except ValueError:
+                rel_path = (
+                    self.build_dir.joinpath(path)
+                    .resolve(strict=False)
+                    .relative_to(self.config.input_dir)
+                )
+            result.append(rel_path)
         return result
 
     def get_thirdparty_libs(self) -> List[Path]:
@@ -91,7 +88,9 @@ class LegacyBuildSystem:
         return result_dict
 
     @staticmethod
-    def extract_include_paths(includes_args: str) -> List[str]:
+    def extract_include_paths(includes_args: Optional[str]) -> List[str]:
+        if not includes_args:
+            return []
         # Define a regular expression to match the include paths
         pattern = r'-I\s*([^"\s]+)'
         # Find all the matches in the include arguments string
@@ -100,11 +99,13 @@ class LegacyBuildSystem:
         return matches
 
     @staticmethod
-    def extract_source_paths(sources: str) -> List[str]:
+    def extract_source_paths(sources: Optional[str]) -> List[str]:
+        if not sources:
+            return []
         # Remove any leading or trailing whitespace from the input string
         sources_str = sources.strip()
         # Split the input string into a list of individual paths
         # using one or more whitespace characters as the delimiter
         sources_str = re.split("\s+", sources_str)
-
+        # Return the list of sources
         return sources_str

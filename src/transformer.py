@@ -3,16 +3,16 @@
 """Transformer
 
 Usage:
-  transformer.py (--source=<source directory> --target=<target directory> --variant=<variant> | --config=<config_file>)
+  transformer.py (--source=<source directory> --target=<target directory> --variant=<variant> | --config=<config_file>) [--make_dump_file=<make_dump_file>]
   transformer.py (-h | --help)
 
 Options:
-  -h --help            Show this screen.
-  --source=DIR         Source directory holding a Dimensions make project
-  --target=DIR         Target directory for the transformed CMake project
-  --variant=VARIANT    VARIANT of the transformed CMake project (e.g., 'customer1_subsystem_flavor')
-  --config=FILE        JSON configuration file
-
+  -h --help                 Show this screen.
+  --source=DIR              Source directory holding a Dimensions make project
+  --target=DIR              Target directory for the transformed CMake project
+  --variant=VARIANT         VARIANT of the transformed CMake project (e.g., 'customer1_subsystem_flavor')
+  --config=FILE             JSON configuration file
+  --make_dump_file=FILE     Make dump file from previous run. This will avoid regenerating this file, which might take long time.
 """
 
 from abc import ABC, abstractmethod
@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 import glob
 import sys
 import textwrap
-from typing import Dict, List
+from typing import Dict, List, Optional
 from docopt import docopt
 import logging
 import subprocess
@@ -121,13 +121,13 @@ class LegacyCMakeListsGenerator(FileGenerator):
 
 
 class Transformer:
-    def __init__(
-        self,
-        config: TransformerConfig,
-    ):
+    def __init__(self, config: TransformerConfig, make_dump_file: Optional[str] = None):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.name = type(self).__name__
         self.config: TransformerConfig = config
+        self.user_make_dump_file: Optional[Path] = (
+            Path(make_dump_file) if make_dump_file else None
+        )
 
     @property
     def input_dir(self) -> Path:
@@ -155,6 +155,8 @@ class Transformer:
 
     @property
     def make_dump_file(self) -> Path:
+        if self.user_make_dump_file:
+            return self.user_make_dump_file
         return self.variant_dir / "original_make_vars.txt"
 
     @property
@@ -211,6 +213,12 @@ class Transformer:
             folder.mkdir(parents=True, exist_ok=True)
 
     def create_legacy_make_variables_dump_file(self) -> None:
+        if self.user_make_dump_file:
+            print(
+                f"Skip make dump file generation. Use user make dump file: {self.user_make_dump_file}."
+            )
+            return
+        print(f"Generate make file dump to {self.make_dump_file}.")
         # include the legacy makefile and save all make variables
         self.run_collect_mak()
 
@@ -384,7 +392,7 @@ def main() -> int:
             Path(arguments["--target"]),
             Variant.from_str(arguments["--variant"]),
         )
-    Transformer(config).run()
+    Transformer(config, arguments["--make_dump_file"]).run()
     return 0
 
 

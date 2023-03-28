@@ -59,6 +59,24 @@ class SubdirReplacement:
     replacement: str
 
 
+class PathSearchAndReplace:
+    def __init__(self, replacements: List[SubdirReplacement]):
+        self.replacements = replacements
+
+    def replace_path(self, path: Path) -> Path:
+        for replacement in self.replacements:
+            if replacement.subdir_rel == "/":
+                return Path(replacement.replacement).joinpath(path)
+            if replacement.subdir_rel in path.parts:
+                path_parts = list(path.parts)
+                for i, part in enumerate(path_parts):
+                    if part == replacement.subdir_rel:
+                        path_parts[i] = replacement.replacement
+                        break  # stop after the first replacement
+                return Path(*path_parts)
+        return path
+
+
 @dataclass
 class TransformerConfig:
     input_dir: Path
@@ -215,6 +233,7 @@ class VariantPartsCMakeGenerator(FileGenerator):
     include_paths: List[Path]
     third_party_libs: List[Path]
     variant: Variant
+    subdir_extra_replacements: List[SubdirReplacement] = field(default_factory=list)
 
     def to_string(self) -> str:
         return "\n".join(
@@ -230,11 +249,15 @@ class VariantPartsCMakeGenerator(FileGenerator):
 
     def cmake_includes(self) -> str:
         return "\n".join(
-            [
-                f"spl_add_include(${{PROJECT_SOURCE_DIR}}/legacy/${{VARIANT}}/{inc.as_posix()})"
-                for inc in self.include_paths
-            ]
+            [f"spl_add_include({self.replace(inc)})" for inc in self.include_paths]
         )
+
+    def replace(self, path: Path) -> str:
+        replacer = PathSearchAndReplace(
+            self.subdir_extra_replacements
+            + [SubdirReplacement("/", "${PROJECT_SOURCE_DIR}/legacy/${VARIANT}")]
+        )
+        return replacer.replace_path(path).as_posix()
 
     def cmake_link_libraries(self) -> str:
         return "\n".join(

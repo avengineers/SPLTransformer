@@ -180,6 +180,7 @@ class Transformer:
             legacy_build_system.get_include_paths(),
             legacy_build_system.get_thirdparty_libs(),
             self.variant,
+            self.config.subdir_replacements,
         ).to_file(self.variant_parts_cmake_file)
         LegacyPartsCMakeGenerator(legacy_build_system.get_source_paths()).to_file(
             self.legacy_parts_cmake_file

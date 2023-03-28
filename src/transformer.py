@@ -16,7 +16,7 @@ Options:
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import glob
 import re
 import sys
@@ -54,6 +54,12 @@ class Variant:
 
 
 @dataclass
+class SubdirReplacement:
+    subdir_rel: str
+    replacement: str
+
+
+@dataclass
 class TransformerConfig:
     input_dir: Path
     output_dir: Path
@@ -63,6 +69,7 @@ class TransformerConfig:
     third_party_libs_dir_rel: str = "ThirdParty"
     includes_var: str = "CPPFLAGS_INC_LIST"
     sources_var: str = "VC_SRC_LIST"
+    subdir_replacements: List[SubdirReplacement] = field(default_factory=list)
 
     @classmethod
     def from_json_file(cls, file: Path):

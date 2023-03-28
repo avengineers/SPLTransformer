@@ -9,8 +9,7 @@ from transformer import SubdirReplacement, Variant, VariantPartsCMakeGenerator
 def generator():
     include_paths = [Path("TO_BE_REPLACED/to/include1"), Path("path/to/include2")]
     third_party_libs = [Path("path/to/lib1.a"), Path("path/to/lib2.a")]
-    variant = Variant("my", "var")
-    generator = VariantPartsCMakeGenerator(include_paths, third_party_libs, variant)
+    generator = VariantPartsCMakeGenerator(include_paths, third_party_libs)
     return generator
 
 
@@ -30,7 +29,7 @@ def test_to_string(generator: VariantPartsCMakeGenerator):
         spl_add_include(${PROJECT_SOURCE_DIR}/legacy/${VARIANT}/src/TO_BE_REPLACED/to/include1)
         spl_add_include(${PROJECT_SOURCE_DIR}/legacy/${VARIANT}/src/path/to/include2)
 
-        spl_add_component(legacy/my/var)
+        spl_add_component(legacy)
         target_link_libraries(${LINK_TARGET_NAME} ${CMAKE_CURRENT_LIST_DIR}/Lib/path/to/lib1.a)
         target_link_libraries(${LINK_TARGET_NAME} ${CMAKE_CURRENT_LIST_DIR}/Lib/path/to/lib2.a)
         """

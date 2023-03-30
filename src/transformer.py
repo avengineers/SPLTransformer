@@ -48,8 +48,20 @@ class FileGenerator(ABC):
 
 @dataclass
 class VariantConfigCMakeGenerator(FileGenerator):
+    compiler_flags: str
+    linker_file: str
+    link_flags: str
+    cmake_toolchain_file: str
+
     def to_string(self) -> str:
-        return ""
+        return textwrap.dedent(
+            f"""\
+        set(VARIANT_C_FLAGS {self.compiler_flags})
+        set(VARIANT_LINKER_FILE {self.linker_file})
+        set(VARIANT_LINK_FLAGS {self.link_flags})
+        set(CMAKE_TOOLCHAIN_FILE {self.cmake_toolchain_file} CACHE PATH "toolchain file")
+        """
+        )
 
 
 @dataclass
@@ -137,6 +149,7 @@ class Transformer:
             if make_dump_file
             else self.variant_dir / "original_make_vars.txt"
         )
+        self.execution_summary = []
 
     @property
     def input_dir(self) -> Path:
@@ -190,6 +203,7 @@ class Transformer:
         self.copy_linker_definition()
         self.copy_config()
         self.create_variant_json()
+        self.print_execution_summary()
 
     def create_cmake_project(self, legacy_build_system: LegacyBuildSystem) -> None:
         VariantPartsCMakeGenerator(
@@ -197,11 +211,26 @@ class Transformer:
             legacy_build_system.get_thirdparty_libs(),
             self.config.subdir_replacements,
         ).to_file(self.variant_parts_cmake_file)
-        VariantConfigCMakeGenerator().to_file(self.variant_config_cmake_file)
+        self.add_execution_summary(
+            f"variant parts cmake {self.variant_parts_cmake_file.relative_to(self.output_dir)}"
+        )
+
+        VariantConfigCMakeGenerator(
+            self.config.variant_compiler_flags,
+            self.config.variant_linker_file,
+            self.config.variant_link_flags,
+            self.config.cmake_toolchain_file,
+        ).to_file(self.variant_config_cmake_file)
+        self.add_execution_summary(
+            f"variant config cmake {self.variant_config_cmake_file.relative_to(self.output_dir)}"
+        )
         LegacyPartsCMakeGenerator(
             legacy_build_system.get_source_paths(),
             self.config.subdir_replacements,
         ).to_file(self.legacy_parts_cmake_file)
+        self.add_execution_summary(
+            f"legacy parts cmake {self.legacy_parts_cmake_file.relative_to(self.output_dir)}"
+        )
         LegacyCMakeListsGenerator().to_file(self.legacy_cmake_lists_file)
 
     def create_folder_structure(self) -> None:
@@ -364,6 +393,24 @@ class Transformer:
                 "SUBSYSTEM": variant.subsystem,
             },
         }
+
+    def print_execution_summary(self):
+        todos = [
+            f"Define the linker configuration file in {self.variant_config_cmake_file}"
+        ]
+        print(
+            f"Variant {self.variant} generated from legacy project {self.input_dir} into {self.output_dir}"
+        )
+        print("Execution summary:")
+        for done in self.execution_summary:
+            print(f" - [x] {done}")
+
+        print("TODOs:")
+        for todo in todos:
+            print(f" - [ ] {todo}")
+
+    def add_execution_summary(self, description: str) -> None:
+        self.execution_summary.append(description)
 
 
 def mirror_tree(source, target, patterns=[]):

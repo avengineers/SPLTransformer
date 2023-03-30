@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import json
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 import dacite
 from pathlib import Path
 from SubdirReplacement import SubdirReplacement
@@ -18,13 +18,22 @@ class TransformerConfig:
     includes_var: str = "CPPFLAGS_INC_LIST"
     sources_var: str = "VC_SRC_LIST"
     subdir_replacements: List[SubdirReplacement] = field(default_factory=list)
+    variant_compiler_flags: str = "TODO: to be replaced with compiler flags"
+    variant_linker_file: str = "TODO: to be replaced with the .lsl file path"
+    variant_link_flags: str = "TODO: to be replaced with linker flags"
+    cmake_toolchain_file: str = (
+        "TODO: to be replaced with the toolchain cmake file path"
+    )
 
     @classmethod
     def from_json_file(cls, file: Path):
-        json_data = cls.read_json(file)
+        return cls.from_dict(cls.read_json(file))
+
+    @classmethod
+    def from_dict(cls, dictionary: Any):
         return dacite.from_dict(
             data_class=cls,
-            data=json_data,
+            data=dictionary,
             config=dacite.Config(
                 type_hooks={
                     Path: lambda data: Path(data) if data else None,

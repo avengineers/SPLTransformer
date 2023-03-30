@@ -259,6 +259,7 @@ def test_cmake_project_creation(new_transformer: Transformer):
 
     for file in [
         out_dir.joinpath(f"variants/{variant}/parts.cmake"),
+        out_dir.joinpath(f"variants/{variant}/config.cmake"),
         out_dir.joinpath(f"legacy/{variant}/parts.cmake"),
         out_dir.joinpath(f"legacy/CMakeLists.txt"),
     ]:

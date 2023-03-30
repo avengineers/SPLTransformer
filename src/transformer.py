@@ -47,6 +47,12 @@ class FileGenerator(ABC):
 
 
 @dataclass
+class VariantConfigCMakeGenerator(FileGenerator):
+    def to_string(self) -> str:
+        return ""
+
+
+@dataclass
 class VariantPartsCMakeGenerator(FileGenerator):
     include_paths: List[Path]
     third_party_libs: List[Path]
@@ -161,6 +167,10 @@ class Transformer:
         return self.variant_dir / "parts.cmake"
 
     @property
+    def variant_config_cmake_file(self) -> Path:
+        return self.variant_dir / "config.cmake"
+
+    @property
     def legacy_parts_cmake_file(self) -> Path:
         return self.legacy_variant_dir / "parts.cmake"
 
@@ -187,6 +197,7 @@ class Transformer:
             legacy_build_system.get_thirdparty_libs(),
             self.config.subdir_replacements,
         ).to_file(self.variant_parts_cmake_file)
+        VariantConfigCMakeGenerator().to_file(self.variant_config_cmake_file)
         LegacyPartsCMakeGenerator(
             legacy_build_system.get_source_paths(),
             self.config.subdir_replacements,

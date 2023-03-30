@@ -8,6 +8,14 @@ from Variant import Variant
 
 
 @dataclass
+class DirMirrorData:
+    source: Path
+    target: Path
+    patterns: List[str] = field(default_factory=list)
+    mirror: bool = False
+
+
+@dataclass
 class TransformerConfig:
     input_dir: Path
     output_dir: Path
@@ -24,6 +32,7 @@ class TransformerConfig:
     cmake_toolchain_file: str = (
         "TODO: to be replaced with the toolchain cmake file path"
     )
+    mirror_directories: List[DirMirrorData] = field(default_factory=list)
 
     @classmethod
     def from_json_file(cls, file: Path):

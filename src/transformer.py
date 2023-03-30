@@ -15,7 +15,7 @@ Options:
   --make-dump-file=FILE     Make dump file from previous run. This will avoid regenerating this file, which might take long time.
 """
 
-import glob
+import dataclasses
 import sys
 from typing import List, Optional
 from docopt import docopt
@@ -25,7 +25,7 @@ import shutil
 import os
 from pathlib import WindowsPath, Path
 import json
-from TransformerConfig import TransformerConfig
+from TransformerConfig import DirMirrorData, TransformerConfig
 from Variant import Variant
 from LegacyBuildSystem import LegacyBuildSystem
 from file_generators import (
@@ -34,6 +34,10 @@ from file_generators import (
     VariantConfigCMakeGenerator,
     VariantPartsCMakeGenerator,
 )
+
+
+def this_script_dir() -> Path:
+    return Path(__file__).parent
 
 
 class Transformer:
@@ -93,12 +97,8 @@ class Transformer:
             raise FileNotFoundError(f"Input directory {self.input_dir} does not exist.")
         self.create_folder_structure()
         self.create_legacy_make_variables_dump_file()
-        self.copy_source_files()
-        self.copy_libs()
-        self.copy_vscode_files()
+        self.mirror_directories()
         self.create_cmake_project(LegacyBuildSystem(self.make_dump_file, self.config))
-        self.copy_linker_definition()
-        self.copy_config()
         self.create_variant_json()
         self.print_execution_summary()
 
@@ -144,6 +144,19 @@ class Transformer:
         for folder in variant_and_legacy_folders + toolchain_paths:
             folder.mkdir(parents=True, exist_ok=True)
 
+    def mirror_directories(self):
+        mirror_dirs_data = self.config.mirror_directories + [
+            DirMirrorData(this_script_dir().joinpath("dist"), self.output_dir)
+        ]
+        for dir_mirror_data in mirror_dirs_data:
+            resolved_data = dataclasses.replace(dir_mirror_data)
+            resolved_data.source = self.input_dir.joinpath(dir_mirror_data.source)
+            resolved_data.target = self.output_dir.joinpath(dir_mirror_data.target)
+            mirror_tree(resolved_data)
+            self.add_execution_summary(
+                f"Copied from {resolved_data.source} to {resolved_data.target}"
+            )
+
     def create_legacy_make_variables_dump_file(self) -> None:
         if self.make_dump_file.is_file():
             print(
@@ -169,86 +182,6 @@ class Transformer:
             [WindowsPath("src/collect.bat").absolute()],
             cwd=self.config.input_dir / self.config.build_dir_rel,
             env=current_env,
-        )
-
-    def copy_vscode_files(self):
-        copy_tree("src/dist", self.config.output_dir)
-
-    def copy_source_files(self):
-        mirror_tree(
-            self.config.input_dir / self.config.source_dir_rel,
-            self.config.output_dir / f"legacy/{self.config.variant}/src",
-        )
-
-    def copy_linker_definition(self):
-        bld_cfg_out = self.variant_dir / "Bld/Cfg"
-        mirror_tree(self.config.input_dir / "Impl/Bld/Cfg", bld_cfg_out)
-        for path, _, files in os.walk(os.path.abspath(bld_cfg_out)):
-            for filename in files:
-                filepath = os.path.join(path, filename)
-                with open(filepath) as f:
-                    try:
-                        s = f.read()
-                    except:
-                        print(
-                            f"WARNING: Could not read file: {filepath}. This is most likely a binary file."
-                        )
-                        continue
-                s = s.replace(
-                    "../../Src", f"../../../../../legacy/{self.config.variant}/src"
-                )
-                with open(filepath, "w") as f:
-                    f.write(s)
-
-    def copy_config(self):
-        config_out = self.variant_dir / "Cfg"
-        mirror_tree(self.config.input_dir / "Impl/Cfg", config_out)
-        for filename in glob.glob(
-            os.path.abspath(config_out) + "/**/*.bat", recursive=True
-        ):
-            with open(filename) as f:
-                s = f.read()
-            s = s.replace(
-                "start ..\\..\\..\\ThirdParty\\CBD\\",
-                "start ..\\..\\..\\..\\..\\build\\deps\\CBD123456\\",
-            )
-            with open(filename, "w") as f:
-                f.write(s)
-        for filename in glob.glob(
-            os.path.abspath(config_out) + "/**/*.dpa", recursive=True
-        ):
-            with open(filename) as f:
-                s = f.read()
-            s = s.replace(">.\\", ">")
-            s = s.replace(
-                ">..\\..\\..\\ThirdParty\CBD\\",
-                ">..\\..\\..\\..\\..\\build\\deps\\CBD123456\\",
-            )
-            s = s.replace(
-                ">..\..\..\ThirdParty\CBD<",
-                ">..\\..\\..\\..\\..\\build\\deps\\CBD123456<",
-            )
-            legacy_gen_data = f"legacy\\{self.config.variant.flavor}\\{self.config.variant.subsystem}\\Bsw\\GenData"
-            s = s.replace(
-                ">..\..\Src\Bsw\GenData\\", f">..\\..\\..\\..\\..\\{legacy_gen_data}\\"
-            )
-            s = s.replace(
-                ">..\..\Src\Bsw\GenData<",
-                f">..\\..\\..\\..\\..\\{legacy_gen_data}<",
-            )
-            with open(filename, "w") as f:
-                f.write(s)
-
-    def copy_libs(self):
-        mirror_tree(
-            self.config.input_dir / "ThirdParty/customer1",
-            self.variant_dir / "Lib/customer1",
-            ["*.lib", "*.a"],
-        )
-        mirror_tree(
-            self.config.input_dir / "ThirdParty/customer2",
-            self.variant_dir / "Lib/customer2",
-            ["*.lib", "*.a"],
         )
 
     def create_variant_json(self, variant: Variant = None):
@@ -311,23 +244,18 @@ class Transformer:
         self.execution_summary.append(description)
 
 
-def mirror_tree(source: Path, target: Path, patterns=[]):
+def mirror_tree(dir_mirror_data: DirMirrorData) -> None:
+    robocopy_params = (
+        ["/PURGE", "/S"] if dir_mirror_data.mirror else ["/XC", "/XN", "/XO", "/S"]
+    )
     subprocess.run(
-        ["robocopy", source, target] + patterns + ["/PURGE", "/S"],
+        ["robocopy", dir_mirror_data.source, dir_mirror_data.target]
+        + dir_mirror_data.patterns
+        + robocopy_params,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
     )
-    for p in Path(target).glob("**/.dm"):
-        shutil.rmtree(p)
-
-
-def copy_tree(source: Path, target: Path, patterns=[]):
-    subprocess.run(
-        ["robocopy", source, target] + patterns + ["/XC", "/XN", "/XO", "/S"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.STDOUT,
-    )
-    for p in Path(target).glob("**/.dm"):
+    for p in Path(dir_mirror_data.target).glob("**/.dm"):
         shutil.rmtree(p)
 
 

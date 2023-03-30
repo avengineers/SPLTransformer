@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import stat
 import subprocess
 import tempfile
 import unittest
@@ -9,7 +10,7 @@ from docopt import DocoptExit
 
 import pytest
 from LegacyBuildSystem import LegacyBuildSystem
-from TransformerConfig import TransformerConfig
+from TransformerConfig import DirMirrorData, TransformerConfig
 from Variant import Variant
 from transformer import (
     Transformer,
@@ -18,13 +19,23 @@ from transformer import (
 from pathlib import Path
 
 
+def handle_remove_readonly(func, path, exc_info):
+    # Check if the error is due to read-only access
+    if not os.access(path, os.W_OK):
+        # Change the file attributes to allow write access and try to remove the file again
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+    else:
+        raise
+
+
 @pytest.fixture
 def new_transformer(request) -> Transformer:
     output_dir = Path("output/test")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Create a temporary directory inside the output directory
-    tmp_path = Path(tempfile.mkdtemp(dir=output_dir))
+    tmp_path = Path(tempfile.mkdtemp(dir=output_dir)).absolute()
     project_name = request.param if request.param else "prj1"
     variant = Variant("MY", "VAR")
     transformer = Transformer(
@@ -37,7 +48,7 @@ def new_transformer(request) -> Transformer:
     yield transformer
 
     # Clean up the temporary directory after the test is done
-    shutil.rmtree(tmp_path)
+    shutil.rmtree(tmp_path, onerror=handle_remove_readonly)
 
 
 class TestTransformer(unittest.TestCase):
@@ -56,68 +67,6 @@ class TestTransformer(unittest.TestCase):
             shutil.rmtree(cls.out_path)
         except:
             print("Nothing to clean up.")
-
-    def test_copy_build_wrapper_files(self):
-        """Build wrapper shall be created."""
-        TestTransformer.transformer.copy_vscode_files()
-        self.assertTrue((TestTransformer.out_path / "CMakeLists.txt").exists())
-        self.assertTrue(
-            (TestTransformer.out_path / "tools/toolchains/gcc/toolchain.cmake").exists()
-        )
-        self.assertTrue((TestTransformer.out_path / ".vscode/cmake-kits.json").exists())
-
-    def test_copy_linker_definition(self):
-        """Linker definition files shall be copied."""
-        TestTransformer.transformer.copy_linker_definition()
-        self.assertTrue(
-            (
-                TestTransformer.out_path
-                / f"variants/{TestTransformer.variant}/Bld/Cfg/Linker.ld"
-            ).exists()
-        )
-
-    def test_copy_config(self):
-        """Variant specific configuration shall be copied."""
-        TestTransformer.transformer.copy_config()
-        eb_tresos_start_script = (
-            TestTransformer.out_path
-            / "variants"
-            / f"{TestTransformer.variant}"
-            / "Cfg/MCAL/EB-Tresos.bat"
-        )
-        self.assertTrue(eb_tresos_start_script.exists())
-        content = eb_tresos_start_script.read_text()
-        self.assertIn("start ..\\..\\..\\..\\..\\build\\deps\\CBD123456", content)
-        davinci_project_file = (
-            TestTransformer.out_path
-            / "variants"
-            / f"{TestTransformer.variant}"
-            / "Cfg/Autosar/HV_Sensor.dpa"
-        )
-        self.assertTrue(davinci_project_file.exists())
-        content = davinci_project_file.read_text()
-        self.assertNotIn(">.\\<", content)
-        self.assertNotIn(">..\\..\\..\\ThirdParty\\CBD", content)
-        self.assertNotIn(">..\\..\\Src\\Bsw\\GenData\\", content)
-        self.assertNotIn(">.\\..\\..\\Src\\Bsw\\GenData\\", content)
-        self.assertIn(">..\\..\\..\\..\\..\\build\\deps\\CBD123456", content)
-        self.assertIn(
-            ">..\\..\\..\\..\\..\\legacy\\{variant}\\Bsw\\GenData".format(
-                variant=TestTransformer.variant.to_string("\\")
-            ),
-            content,
-        )
-
-    def test_copy_libs(self):
-        """Libraries shall be copied."""
-        TestTransformer.transformer.copy_libs()
-        self.assertTrue(
-            (
-                TestTransformer.out_path
-                / f"variants/{TestTransformer.variant}"
-                / "Lib/customer1/libspl.a"
-            ).exists()
-        )
 
     def test_variant_json_creation(self):
         """will create a new json if not existing"""
@@ -218,39 +167,9 @@ def test_argument_parser_mutually_exclusive_arguments():
         create_argument_parser(arg_list)
 
 
-@pytest.mark.parametrize(
-    "input_dir,output_dir,source_dir_rel",
-    [
-        ("test/data/prj1", "output/test/prj1", None),
-        ("test/data/prj2", "output/test/prj2", "Implementation/Src"),
-    ],
-)
-def test_copy_source_files(input_dir, output_dir, source_dir_rel):
-    """Source files shall be copied."""
-    input_path = Path(input_dir)
-    output_path = Path(output_dir)
-    variant = "MY/VAR"
-    argdict = {"input_dir": input_path, "output_dir": output_path, "variant": variant}
-    if source_dir_rel:
-        argdict["source_dir_rel"] = source_dir_rel
-    transformer = Transformer(TransformerConfig(**argdict))
-    transformer.copy_source_files()
-
-    files_to_check = [
-        f"legacy/{variant}/src/main.c",
-        f"legacy/{variant}/src/component_a/component_a.c",
-        f"legacy/{variant}/src/component_a/component_a.h",
-        f"legacy/{variant}/src/include_dir/header.h",
-    ]
-
-    for file_path in files_to_check:
-        assert (output_path / file_path).exists()
-
-
 @pytest.mark.parametrize("new_transformer", ["prj1"], indirect=True)
 def test_cmake_project_creation(new_transformer: Transformer):
     transformer = new_transformer
-    transformer.copy_libs()
     transformer.create_cmake_project(LegacyBuildSystem("", transformer.config))
 
     out_dir = transformer.output_dir
@@ -261,5 +180,23 @@ def test_cmake_project_creation(new_transformer: Transformer):
         out_dir.joinpath(f"variants/{variant}/config.cmake"),
         out_dir.joinpath(f"legacy/{variant}/parts.cmake"),
         out_dir.joinpath(f"legacy/CMakeLists.txt"),
+    ]:
+        assert file.is_file()
+
+
+@pytest.mark.parametrize("new_transformer", ["prj1"], indirect=True)
+def test_mirror_directories(new_transformer: Transformer):
+    transformer = new_transformer
+    transformer.config.mirror_directories = [
+        DirMirrorData(Path("Impl/Bld"), Path("NewBld"))
+    ]
+    transformer.mirror_directories()
+
+    out_dir = transformer.output_dir
+
+    for file in [
+        out_dir.joinpath("NewBld/makefile"),
+        out_dir.joinpath("NewBld/Cfg/Linker.ld"),
+        out_dir.joinpath("NewBld/Cfg/binary_file.so"),
     ]:
         assert file.is_file()

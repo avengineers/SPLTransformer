@@ -149,7 +149,7 @@ class Transformer:
             if make_dump_file
             else self.variant_dir / "original_make_vars.txt"
         )
-        self.execution_summary = []
+        self.execution_summary: List[str] = []
 
     @property
     def input_dir(self) -> Path:
@@ -232,16 +232,13 @@ class Transformer:
             f"legacy parts cmake {self.legacy_parts_cmake_file.relative_to(self.output_dir)}"
         )
         LegacyCMakeListsGenerator().to_file(self.legacy_cmake_lists_file)
+        self.add_execution_summary(
+            f"legacy cmake listing {self.legacy_cmake_lists_file.relative_to(self.output_dir)}"
+        )
 
     def create_folder_structure(self) -> None:
         variant_and_legacy_folders = [self.variant_dir, self.legacy_variant_dir]
-        toolchain_folders = [
-            "tools/toolchains/gcc",
-            "tools/toolchains/comp_201754",
-            "tools/toolchains/comp_201914",
-            "tools/toolchains/TriCore_v6p2r2p2",
-            "tools/toolchains/TriCore_v6p3r1",
-        ]
+        toolchain_folders = ["tools/toolchains/gcc"]
 
         toolchain_paths = [
             self.config.output_dir.joinpath(folder) for folder in toolchain_folders
@@ -256,19 +253,25 @@ class Transformer:
                 f"Skipping make dump file generation, using already existing {self.make_dump_file}."
             )
             return
-        print(f"Generating make file dump to {self.make_dump_file}.")
+        self.add_execution_summary(
+            f"Generating make file dump to {self.make_dump_file.relative_to(self.output_dir)}."
+        )
+
         # include the legacy makefile and save all make variables
         self.run_collect_mak()
 
     def run_collect_mak(self):
+        # Create a copy of the current environment variables
+        current_env = os.environ.copy()
+        # Add or modify environment variables
+        current_env["MAKESUPPORT_DIR"] = str(
+            self.config.input_dir / "COMMON/CBD/MakeSupport"
+        )
+        current_env["MAKE_VARS_FILE"] = str(self.make_dump_file)
         subprocess.run(
-            [
-                WindowsPath("src/collect.bat"),
-                self.config.input_dir,
-                self.config.output_dir,
-                self.config.build_dir_rel,
-                self.config.variant.to_string(),
-            ]
+            [WindowsPath("src/collect.bat").absolute()],
+            cwd=self.config.input_dir / self.config.build_dir_rel,
+            env=current_env,
         )
 
     def copy_vscode_files(self):
@@ -395,9 +398,7 @@ class Transformer:
         }
 
     def print_execution_summary(self):
-        todos = [
-            f"Define the linker configuration file in {self.variant_config_cmake_file}"
-        ]
+        todos = [f"Create a toolchain file for your compiler or use an existing one."]
         print(
             f"Variant {self.variant} generated from legacy project {self.input_dir} into {self.output_dir}"
         )

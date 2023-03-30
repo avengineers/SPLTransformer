@@ -1,10 +1,9 @@
 import json
 from pathlib import Path
-from typing import Dict
+from SubdirReplacement import SubdirReplacement
 
-import pytest
-
-from transformer import SubdirReplacement, TransformerConfig, Variant
+from TransformerConfig import TransformerConfig
+from Variant import Variant
 
 
 def test_mandatory_config_json(tmp_path: Path):

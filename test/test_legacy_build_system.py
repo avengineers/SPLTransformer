@@ -1,6 +1,6 @@
 from pathlib import Path
+from LegacyBuildSystem import LegacyBuildSystem
 from TransformerConfig import TransformerConfig
-from transformer import LegacyBuildSystem
 
 
 def test_parse_make_variables_dump_file():

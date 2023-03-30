@@ -3,17 +3,16 @@
 import os
 import subprocess
 import tempfile
-import textwrap
 import unittest
 import shutil
 from docopt import DocoptExit
 
 import pytest
+from LegacyBuildSystem import LegacyBuildSystem
+from TransformerConfig import TransformerConfig
+from Variant import Variant
 from transformer import (
-    LegacyBuildSystem,
-    TransformerConfig,
     Transformer,
-    Variant,
     create_argument_parser,
 )
 from pathlib import Path

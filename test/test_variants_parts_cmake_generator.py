@@ -2,7 +2,7 @@ import textwrap
 import pytest
 from pathlib import Path
 
-from transformer import SubdirReplacement, Variant, VariantPartsCMakeGenerator
+from file_generators import SubdirReplacement, VariantPartsCMakeGenerator
 
 
 @pytest.fixture

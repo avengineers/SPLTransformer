@@ -1,5 +1,5 @@
 import textwrap
-from transformer import VariantConfigCMakeGenerator
+from file_generators import VariantConfigCMakeGenerator
 
 
 def test_to_string():

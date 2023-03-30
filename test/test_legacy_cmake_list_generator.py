@@ -1,8 +1,6 @@
 import textwrap
-import pytest
-from pathlib import Path
 
-from transformer import LegacyCMakeListsGenerator
+from file_generators import LegacyCMakeListsGenerator
 
 
 def test_to_string():

@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 from SubdirReplacement import SubdirReplacement
 
-from transformer import LegacyPartsCMakeGenerator
+from file_generators import LegacyPartsCMakeGenerator
 
 
 @pytest.fixture

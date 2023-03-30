@@ -1,6 +1,7 @@
 from pathlib import Path
+from PathSearchAndReplace import PathSearchAndReplace
 
-from transformer import PathSearchAndReplace, SubdirReplacement
+from SubdirReplacement import SubdirReplacement
 
 
 def test_replace_path_root():

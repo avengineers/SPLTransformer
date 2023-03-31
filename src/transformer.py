@@ -146,7 +146,9 @@ class Transformer:
 
     def mirror_directories(self):
         mirror_dirs_data = self.config.mirror_directories + [
-            DirMirrorData(this_script_dir().joinpath("dist"), self.output_dir)
+            DirMirrorData(
+                this_script_dir().joinpath("dist"), self.output_dir, mirror=False
+            )
         ]
         for dir_mirror_data in mirror_dirs_data:
             resolved_data = dataclasses.replace(dir_mirror_data)

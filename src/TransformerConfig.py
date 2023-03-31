@@ -12,7 +12,7 @@ class DirMirrorData:
     source: Path
     target: Path
     patterns: List[str] = field(default_factory=list)
-    mirror: bool = False
+    mirror: bool = True
 
 
 @dataclass

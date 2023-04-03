@@ -33,6 +33,7 @@ class TransformerConfig:
         "TODO: to be replaced with the toolchain cmake file path"
     )
     mirror_directories: List[DirMirrorData] = field(default_factory=list)
+    batch_commands: List[str] = field(default_factory=list)
 
     @classmethod
     def from_json_file(cls, file: Path):

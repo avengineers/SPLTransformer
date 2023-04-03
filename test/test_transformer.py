@@ -4,6 +4,7 @@ import os
 import stat
 import subprocess
 import tempfile
+import textwrap
 import unittest
 import shutil
 from docopt import DocoptExit
@@ -200,3 +201,20 @@ def test_mirror_directories(new_transformer: Transformer):
         out_dir.joinpath("NewBld/Cfg/binary_file.so"),
     ]:
         assert file.is_file()
+
+
+@pytest.mark.parametrize("new_transformer", ["prj1"], indirect=True)
+def test_create_legacy_make_variables_dump_file(new_transformer: Transformer):
+    transformer = new_transformer
+    transformer.config.batch_commands = ["set TESTVAR=BLAFASEL"]
+    transformer.variant_dir.mkdir(parents=True, exist_ok=True)
+    transformer.create_legacy_make_variables_dump_file()
+
+    assert transformer.variant_dir.joinpath("original_make_vars.txt").is_file()
+    assert transformer.variant_dir.joinpath("collect.bat").is_file()
+    assert transformer.variant_dir.joinpath("collect.mak").is_file()
+
+    assert (
+        "TESTVAR = BLAFASEL"
+        in transformer.variant_dir.joinpath("original_make_vars.txt").read_text()
+    )

@@ -17,6 +17,7 @@ Options:
 
 import dataclasses
 import sys
+import textwrap
 from typing import List, Optional
 from docopt import docopt
 import logging
@@ -169,22 +170,29 @@ class Transformer:
             f"Generating make file dump to {self.make_dump_file.relative_to(self.output_dir)}."
         )
 
-        # include the legacy makefile and save all make variables
-        self.run_collect_mak()
+        collect_bat = self.variant_dir.joinpath("collect.bat")
+        collect_bat.write_text(
+            "\n".join(
+                [
+                    "@echo on",
+                    "set THIS_DIR=%~dp0",
+                    f"set MAKE_VARS_FILE={str(self.make_dump_file)}",
+                    f"pushd {self.config.input_dir / self.config.build_dir_rel}",
+                ]
+                + self.config.batch_commands
+                + [
+                    "@echo on",
+                    "where make",
+                    "make --silent --file=%THIS_DIR%collect.mak collect",
+                    "popd",
+                ]
+            )
+        )
 
-    def run_collect_mak(self):
-        # Create a copy of the current environment variables
-        current_env = os.environ.copy()
-        # Add or modify environment variables
-        current_env["MAKESUPPORT_DIR"] = str(
-            self.config.input_dir / "COMMON/CBD/MakeSupport"
-        )
-        current_env["MAKE_VARS_FILE"] = str(self.make_dump_file)
-        subprocess.run(
-            [WindowsPath("src/collect.bat").absolute()],
-            cwd=self.config.input_dir / self.config.build_dir_rel,
-            env=current_env,
-        )
+        collect_mak = self.variant_dir.joinpath("collect.mak")
+        shutil.copy(Path("src/collect.mak"), collect_mak)
+
+        subprocess.run([WindowsPath(collect_bat).absolute()])
 
     def create_variant_json(self, variant: Variant = None):
         if not variant:

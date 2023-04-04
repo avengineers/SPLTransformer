@@ -91,12 +91,8 @@ class LegacyBuildSystem:
     def extract_include_paths(includes_args: Optional[str]) -> List[str]:
         if not includes_args:
             return []
-        # Define a regular expression to match the include paths
-        pattern = r'-I\s*([^"\s]+)'
-        # Find all the matches in the include arguments string
-        matches = re.findall(pattern, includes_args)
-        # Return the list of include paths
-        return matches
+        paths = LegacyBuildSystem.extract_source_paths(includes_args)
+        return [path.replace("-I", "") for path in paths]
 
     @staticmethod
     def extract_source_paths(sources: Optional[str]) -> List[str]:

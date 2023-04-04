@@ -1,4 +1,6 @@
 from pathlib import Path
+
+import pytest
 from LegacyBuildSystem import LegacyBuildSystem
 from TransformerConfig import TransformerConfig
 
@@ -39,10 +41,16 @@ def test_extract_sources_path():
     assert sources == ["../ABC/src.c", "../IMPL/src.c", "../IMPL/src2.c"]
 
 
-def test_get_includes():
-    make_var_dump = (
-        "CPPFLAGS_INC_LIST = -I../COMMON/BLA/CompX -I../COMMON/BLU/CompY -IIMPL/foo"
-    )
+@pytest.mark.parametrize(
+    "make_var_dump",
+    [
+        (
+            "CPPFLAGS_INC_LIST = -I../COMMON/BLA/CompX   -I../COMMON/BLU/CompY -IIMPL/foo"
+        ),
+        ("CPPFLAGS_INC_LIST = ../COMMON/BLA/CompX ../COMMON/BLU/CompY IMPL/foo"),
+    ],
+)
+def test_get_includes(make_var_dump):
     input_dir = Path("X:/in")
     config = TransformerConfig(input_dir, Path("X:/out"), "my/var")
     config.build_dir_rel = "BLD"

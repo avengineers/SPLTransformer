@@ -3,18 +3,22 @@
 """Transformer
 
 Usage:
-  transformer.py --source=<source directory> --target=<target directory> --variant=<variant>
+  transformer.py (--source=<source directory> --target=<target directory> --variant=<variant> | --config=<config_file>) [--make-dump-file=<make_dump_file>]
   transformer.py (-h | --help)
 
 Options:
-  -h --help        Show this screen.
-  --source=DIR     Source directory holding a Dimensions make project
-  --target=DIR     Target directory for the transformed CMake project
-  --variant=VARIANT  VARIANT of the transformed CMake project (e.g., 'customer1_subsystem_flavor')
-
+  -h --help                 Show this screen.
+  --source=DIR              Source directory holding a Dimensions make project
+  --target=DIR              Target directory for the transformed CMake project
+  --variant=VARIANT         VARIANT of the transformed CMake project (e.g., 'customer1_subsystem_flavor')
+  --config=FILE             JSON configuration file
+  --make-dump-file=FILE     Make dump file from previous run. This will avoid regenerating this file, which might take long time.
 """
 
-import glob
+import dataclasses
+import sys
+import textwrap
+from typing import List, Optional
 from docopt import docopt
 import logging
 import subprocess
@@ -22,190 +26,267 @@ import shutil
 import os
 from pathlib import WindowsPath, Path
 import json
+from TransformerConfig import DirMirrorData, TransformerConfig
+from Variant import Variant
+from LegacyBuildSystem import LegacyBuildSystem
+from file_generators import (
+    LegacyCMakeListsGenerator,
+    LegacyPartsCMakeGenerator,
+    VariantConfigCMakeGenerator,
+    VariantPartsCMakeGenerator,
+)
+
+
+def this_script_dir() -> Path:
+    return Path(__file__).parent
 
 
 class Transformer:
-    def __init__(self, in_path, out_path, variant):
+    def __init__(self, config: TransformerConfig, make_dump_file: Optional[str] = None):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.name = 'Transformer'
+        self.name = type(self).__name__
+        self.config: TransformerConfig = config
+        self.make_dump_file: Path = (
+            Path(make_dump_file)
+            if make_dump_file
+            else self.variant_dir / "original_make_vars.txt"
+        )
+        self.execution_summary: List[str] = []
 
-        self.in_path = in_path
-        self.out_path = out_path
-        self.variant = variant
+    @property
+    def input_dir(self) -> Path:
+        return self.config.input_dir
 
-        self.impl_out_path = out_path
-        self.impl_in_path = in_path / 'Impl'
-        self.build_in_path = self.impl_in_path / 'Bld'
+    @property
+    def output_dir(self) -> Path:
+        return self.config.output_dir
+
+    @property
+    def variant(self) -> str:
+        return self.config.variant
+
+    @property
+    def legacy_dir(self) -> Path:
+        return self.output_dir.joinpath(f"legacy")
+
+    @property
+    def legacy_variant_dir(self) -> Path:
+        return self.legacy_dir.joinpath(f"{self.variant}")
+
+    @property
+    def variant_dir(self) -> Path:
+        return self.output_dir.joinpath(f"variants/{self.variant}")
+
+    @property
+    def variant_parts_cmake_file(self) -> Path:
+        return self.variant_dir / "parts.cmake"
+
+    @property
+    def variant_config_cmake_file(self) -> Path:
+        return self.variant_dir / "config.cmake"
+
+    @property
+    def legacy_parts_cmake_file(self) -> Path:
+        return self.legacy_variant_dir / "parts.cmake"
+
+    @property
+    def legacy_cmake_lists_file(self) -> Path:
+        return self.legacy_dir / "CMakeLists.txt"
 
     def run(self):
-        self.copy_source_files()
-        self.copy_libs()
-        self.copy_build_wrapper_files()
-        self.create_cmake_project()
-        self.copy_linker_definition()
-        self.copy_config()
+        if not self.input_dir.exists():
+            raise FileNotFoundError(f"Input directory {self.input_dir} does not exist.")
+        self.create_folder_structure()
+        self.create_legacy_make_variables_dump_file()
+        self.mirror_directories()
+        self.create_cmake_project(LegacyBuildSystem(self.make_dump_file, self.config))
         self.create_variant_json()
+        self.print_execution_summary()
 
-    def create_cmake_project(self):
-        self.logger.info('create project file')
-        (self.out_path / 'variants' /
-         self.variant).mkdir(parents=True, exist_ok=True)
-        (self.out_path / 'legacy' /
-         self.variant).mkdir(parents=True, exist_ok=True)
-        (self.out_path / 'tools/toolchains/gcc').mkdir(parents=True, exist_ok=True)
-        (self.out_path / 'tools/toolchains/comp_201754').mkdir(parents=True, exist_ok=True)
-        (self.out_path / 'tools/toolchains/comp_201914').mkdir(parents=True, exist_ok=True)
-        (self.out_path / 'tools/toolchains/TriCore_v6p2r2p2').mkdir(parents=True, exist_ok=True)
-
-        # run twice to get properties file first
-        self.run_collect_mak()
-
-        variant_parts_path = (self.out_path / 'variants' /
-                              self.variant / 'parts.cmake')
-        with open(variant_parts_path, 'a') as f:
-            for root, dirs, files in os.walk(self.out_path / 'variants' / self.variant / 'Lib'):
-                for file in files:
-                    print(file)
-                    if file.endswith('.a') or file.endswith('.lib'):
-                        rel_path = os.path.relpath(os.path.join(
-                            root, file), self.out_path / 'variants' / self.variant).replace('\\', '/')
-                        f.write(
-                            'target_link_libraries(${{LINK_TARGET_NAME}} ${{CMAKE_CURRENT_LIST_DIR}}/{})\n'.format(rel_path))
-
-    def run_collect_mak(self):
-        subprocess.run(
-            [
-                WindowsPath('src/collect.bat'),
-                self.build_in_path,
-                self.out_path,
-                self.variant
-            ]
+    def create_cmake_project(self, legacy_build_system: LegacyBuildSystem) -> None:
+        VariantPartsCMakeGenerator(
+            legacy_build_system.get_include_paths(),
+            legacy_build_system.get_thirdparty_libs(),
+            self.config.subdir_replacements,
+        ).to_file(self.variant_parts_cmake_file)
+        self.add_execution_summary(
+            f"variant parts cmake {self.variant_parts_cmake_file.relative_to(self.output_dir)}"
         )
 
-    def copy_build_wrapper_files(self):
-        copy_tree('src/dist', self.out_path)
+        VariantConfigCMakeGenerator(
+            self.config.variant_compiler_flags,
+            self.config.variant_linker_file,
+            self.config.variant_link_flags,
+            self.config.cmake_toolchain_file,
+        ).to_file(self.variant_config_cmake_file)
+        self.add_execution_summary(
+            f"variant config cmake {self.variant_config_cmake_file.relative_to(self.output_dir)}"
+        )
+        LegacyPartsCMakeGenerator(
+            legacy_build_system.get_source_paths(),
+            self.config.subdir_replacements,
+        ).to_file(self.legacy_parts_cmake_file)
+        self.add_execution_summary(
+            f"legacy parts cmake {self.legacy_parts_cmake_file.relative_to(self.output_dir)}"
+        )
+        LegacyCMakeListsGenerator().to_file(self.legacy_cmake_lists_file)
+        self.add_execution_summary(
+            f"legacy cmake listing {self.legacy_cmake_lists_file.relative_to(self.output_dir)}"
+        )
 
-    def copy_source_files(self):
-        mirror_tree(self.in_path / 'Impl/Src',
-                    self.out_path / 'legacy' / self.variant)
+    def create_folder_structure(self) -> None:
+        variant_and_legacy_folders = [self.variant_dir, self.legacy_variant_dir]
+        toolchain_folders = ["tools/toolchains/gcc"]
 
-    def copy_linker_definition(self):
-        bld_cfg_out = self.out_path / 'variants' / self.variant / 'Bld/Cfg'
-        mirror_tree(self.in_path / 'Impl/Bld/Cfg', bld_cfg_out)
-        for path, dirs, files in os.walk(os.path.abspath(bld_cfg_out)):
-            for filename in files:
-                filepath = os.path.join(path, filename)
-                with open(filepath) as f:
-                    try:
-                        s = f.read()
-                    except:
-                        print(f"WARNING: Could not read file: {filepath}. This is most likely a binary file.")
-                        continue
-                s = s.replace(
-                    '../../Src', '../../../../../legacy/' + self.variant)
-                with open(filepath, "w") as f:
-                    f.write(s)
+        toolchain_paths = [
+            self.config.output_dir.joinpath(folder) for folder in toolchain_folders
+        ]
 
-    def copy_config(self):
-        config_out = self.out_path / 'variants' / self.variant / 'Cfg'
-        mirror_tree(self.in_path / 'Impl/Cfg', config_out)
-        for filename in glob.glob(os.path.abspath(config_out) + "/**/*.bat", recursive=True):
-            with open(filename) as f:
-                s = f.read()
-            s = s.replace('start ..\\..\\..\\ThirdParty\\CBD\\',
-                          'start ..\\..\\..\\..\\..\\build\\deps\\CBD123456\\')
-            with open(filename, "w") as f:
-                f.write(s)
-        for filename in glob.glob(os.path.abspath(config_out) + "/**/*.dpa", recursive=True):
-            with open(filename) as f:
-                s = f.read()
-            s = s.replace('>.\\', '>')
-            s = s.replace('>..\\..\\..\\ThirdParty\CBD\\',
-                          '>..\\..\\..\\..\\..\\build\\deps\\CBD123456\\')
-            s = s.replace('>..\..\..\ThirdParty\CBD<',
-                          '>..\\..\\..\\..\\..\\build\\deps\\CBD123456<')
-            s = s.replace('>..\..\Src\Bsw\GenData\\', '>..\\..\\..\\..\\..\\legacy\\{variant}\\Bsw\\GenData\\'.format(
-                variant=self.variant.replace('/', '\\')))
-            s = s.replace('>..\..\Src\Bsw\GenData<', '>..\\..\\..\\..\\..\\legacy\\{variant}\\Bsw\\GenData<'.format(
-                variant=self.variant.replace('/', '\\')))
-            with open(filename, "w") as f:
-                f.write(s)
+        for folder in variant_and_legacy_folders + toolchain_paths:
+            folder.mkdir(parents=True, exist_ok=True)
 
-    def copy_libs(self):
-        mirror_tree(self.in_path / 'ThirdParty/customer1',
-                    self.out_path / 'variants' / self.variant / 'Lib/customer1', ['*.lib', '*.a'])
-        mirror_tree(self.in_path / 'ThirdParty/customer2',
-                    self.out_path / 'variants' / self.variant / 'Lib/customer2', ['*.lib', '*.a'])
+    def mirror_directories(self):
+        mirror_dirs_data = self.config.mirror_directories + [
+            DirMirrorData(
+                this_script_dir().joinpath("dist"), self.output_dir, mirror=False
+            )
+        ]
+        for dir_mirror_data in mirror_dirs_data:
+            resolved_data = dataclasses.replace(dir_mirror_data)
+            resolved_data.source = self.input_dir.joinpath(dir_mirror_data.source)
+            resolved_data.target = self.output_dir.joinpath(dir_mirror_data.target)
+            mirror_tree(resolved_data)
+            self.add_execution_summary(
+                f"Copied from {resolved_data.source} to {resolved_data.target}"
+            )
 
-    def create_variant_json(self, variant=''):
+    def create_legacy_make_variables_dump_file(self) -> None:
+        if self.make_dump_file.is_file():
+            print(
+                f"Skipping make dump file generation, using already existing {self.make_dump_file}."
+            )
+            return
+        self.add_execution_summary(
+            f"Generating make file dump to {self.make_dump_file.relative_to(self.output_dir)}."
+        )
+
+        collect_bat = self.variant_dir.joinpath("collect.bat")
+        collect_bat.write_text(
+            "\n".join(
+                [
+                    "@echo on",
+                    "set THIS_DIR=%~dp0",
+                    f"set MAKE_VARS_FILE={str(self.make_dump_file)}",
+                    f"pushd {self.config.input_dir / self.config.build_dir_rel}",
+                ]
+                + self.config.batch_commands
+                + [
+                    "@echo on",
+                    "where make",
+                    "make --silent --file=%THIS_DIR%collect.mak collect",
+                    "popd",
+                ]
+            )
+        )
+
+        collect_mak = self.variant_dir.joinpath("collect.mak")
+        shutil.copy(Path("src/collect.mak"), collect_mak)
+
+        subprocess.run([WindowsPath(collect_bat).absolute()])
+
+    def create_variant_json(self, variant: Variant = None):
         if not variant:
-            variant = self.variant
-        (self.out_path / '.vscode').mkdir(parents=True, exist_ok=True)
-        file = Path(self.out_path / '.vscode/cmake-variants.json')
-        flavor, subsystem = variant.split('/')
+            variant = self.config.variant
+        (self.config.output_dir / ".vscode").mkdir(parents=True, exist_ok=True)
+        file = Path(self.config.output_dir / ".vscode/cmake-variants.json")
         if os.path.isfile(file):
             with open(file, "r") as f:
                 data = json.loads(f.read())
             with open(file, "w") as f:
-                new_entry = {
-                    "{}".format(variant): {
-                        "short": variant,
-                        "long": "select to build variant '{}'".format(variant),
-                        "buildType": flavor + "_" + subsystem,
-                        "settings": {
-                            "FLAVOR": flavor,
-                            "SUBSYSTEM": subsystem
-                        }
-                    }
-                }
+                new_entry = {f"{variant}": self.create_vs_code_variant_config(variant)}
                 data["variant"]["choices"].update(new_entry)
                 f.write(json.dumps(data, indent=2, sort_keys=True) + "\n")
         else:
             with open(file, "w") as f:
-                f.write(json.dumps({
-                    "variant": {
-                        "default": variant,
-                        "choices": {
-                            "{}".format(variant): {
-                                "short": variant,
-                                "long": "select to build variant '" + variant + "'",
-                                "buildType": flavor + '_' + subsystem,
-                                "settings": {
-                                    "FLAVOR": flavor,
-                                    "SUBSYSTEM": subsystem
-                                }
+                f.write(
+                    json.dumps(
+                        {
+                            "variant": {
+                                "default": f"{variant}",
+                                "choices": {
+                                    f"{variant}": self.create_vs_code_variant_config(
+                                        variant
+                                    )
+                                },
                             }
-                        }
-                    }
-                }, indent=2, sort_keys=True) + "\n")
+                        },
+                        indent=2,
+                        sort_keys=True,
+                    )
+                    + "\n"
+                )
+
+    def create_vs_code_variant_config(self, variant: Variant):
+        return {
+            "short": f"{variant}",
+            "long": f"select to build variant '{variant}'",
+            "buildType": variant.to_string("_"),
+            "settings": {
+                "FLAVOR": variant.flavor,
+                "SUBSYSTEM": variant.subsystem,
+            },
+        }
+
+    def print_execution_summary(self):
+        todos = [f"Create a toolchain file for your compiler or use an existing one."]
+        print(
+            f"Variant {self.variant} generated from legacy project {self.input_dir} into {self.output_dir}"
+        )
+        print("Execution summary:")
+        for done in self.execution_summary:
+            print(f" - [x] {done}")
+
+        print("TODOs:")
+        for todo in todos:
+            print(f" - [ ] {todo}")
+
+    def add_execution_summary(self, description: str) -> None:
+        self.execution_summary.append(description)
 
 
-def mirror_tree(source, target, patterns=[]):
-    subprocess.run(['robocopy', source, target] + patterns + ['/PURGE', '/S'],
-                   stdout=subprocess.DEVNULL,
-                   stderr=subprocess.STDOUT)
-    for p in Path(target).glob("**/.dm"):
-        shutil.rmtree(p)
-
-
-def copy_tree(source, target, patterns=[]):
-    subprocess.run(['robocopy', source, target] + patterns + ['/XC', '/XN', '/XO', '/S'],
-                   stdout=subprocess.DEVNULL,
-                   stderr=subprocess.STDOUT)
-    for p in Path(target).glob("**/.dm"):
-        shutil.rmtree(p)
-
-
-def main():
-    arguments = docopt(__doc__)
-    transformer = Transformer(
-        Path(arguments['--source']),
-        Path(arguments['--target']),
-        arguments['--variant']
+def mirror_tree(dir_mirror_data: DirMirrorData) -> None:
+    robocopy_params = (
+        ["/PURGE", "/S"] if dir_mirror_data.mirror else ["/XC", "/XN", "/XO", "/S"]
     )
-    transformer.run()
+    subprocess.run(
+        ["robocopy", dir_mirror_data.source, dir_mirror_data.target]
+        + dir_mirror_data.patterns
+        + robocopy_params,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
+    )
+    for p in Path(dir_mirror_data.target).glob("**/.dm"):
+        shutil.rmtree(p)
+
+
+def create_argument_parser(argv=None):
+    arguments = docopt(__doc__, argv)
+    return arguments
+
+
+def main() -> int:
+    arguments = create_argument_parser()
+    if arguments["--config"]:
+        config = TransformerConfig.from_json_file(Path(arguments["--config"]))
+    else:
+        config = TransformerConfig(
+            Path(arguments["--source"]),
+            Path(arguments["--target"]),
+            Variant.from_str(arguments["--variant"]),
+        )
+    Transformer(config, arguments["--make-dump-file"]).run()
     return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

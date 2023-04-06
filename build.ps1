@@ -1,92 +1,120 @@
-$ErrorActionPreference = "Stop"
+<#
+.DESCRIPTION
+    Wrapper for installing dependencies, running and testing the project
 
-# Needed on Jenkins, somehow the env var PATH is not updated automatically
-# after tool installations by scoop
-Function ReloadEnvVars () {
-    $Env:Path = [System.Environment]::GetEnvironmentVariable("Path", "User") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "Machine")
-}
+.Notes
+On Windows, it may be required to call this script with the proper execution policy.
+You can do this by issuing the following PowerShell command:
 
-Function ScoopInstall ([string[]]$Packages) {
-    if ($Packages) {
-        Invoke-CommandLine -CommandLine "scoop install $Packages"
-        ReloadEnvVars
-    }
-}
+PS C:\> powershell -ExecutionPolicy Bypass -File .\build.ps1
 
-Function PythonInstall ([string[]]$Packages) {
-    if ($Packages) {
-        $PipInstaller = "python -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org"
-        Invoke-CommandLine -CommandLine "$PipInstaller $Packages"
-        ReloadEnvVars
-    }
-}
+For more information on Execution Policies:
+https://go.microsoft.com/fwlink/?LinkID=135170
+#>
+
+param(
+    [switch]$clean ## clean build, wipe out all build artifacts
+    , [switch]$install ## install mandatory packages
+)
 
 Function Invoke-CommandLine {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingInvokeExpression', '', Justification = 'Usually this statement must be avoided (https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/avoid-using-invoke-expression?view=powershell-7.3), here it is OK as it does not execute unknown code.')]
     param (
+        [Parameter(Mandatory = $true, Position = 0)]
         [string]$CommandLine,
-        [bool]$StopAtError = $true
+        [Parameter(Mandatory = $false, Position = 1)]
+        [bool]$StopAtError = $true,
+        [Parameter(Mandatory = $false, Position = 2)]
+        [bool]$Silent = $false
     )
-    Write-Host "Executing: $CommandLine"
+    if (-Not $Silent) {
+        Write-Output "Executing: $CommandLine"
+    }
+    $global:LASTEXITCODE = 0
     Invoke-Expression $CommandLine
-    if ($LASTEXITCODE -ne 0) {
+    if ($global:LASTEXITCODE -ne 0) {
         if ($StopAtError) {
-            throw "Command line call `"$CommandLine`" failed with exit code $LASTEXITCODE"
+            Write-Error "Command line call `"$CommandLine`" failed with exit code $global:LASTEXITCODE"
         }
         else {
-            Write-Host "Command line call `"$CommandLine`" failed with exit code $LASTEXITCODE, continuing ..."
+            if (-Not $Silent) {
+                Write-Output "Command line call `"$CommandLine`" failed with exit code $global:LASTEXITCODE, continuing ..."
+            }
         }
     }
 }
 
-Push-Location $PSScriptRoot
-
-# TODO: read proxy from a configuration file to make this script independent on network settings
-if ($Env:HTTP_PROXY -and $Env:HTTPS_PROXY -and $Env:NO_PROXY) {
-    $WebProxy = New-Object System.Net.WebProxy($Env:HTTP_PROXY, $true, ($Env:NO_PROXY).split(','))
-    [net.webrequest]::defaultwebproxy = $WebProxy
-    [net.webrequest]::defaultwebproxy.credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
-}
-
-# Initial Scoop installation
-ReloadEnvVars
-if (-Not (Get-Command scoop -errorAction SilentlyContinue)) {
-    # Initial Scoop installation
-    iwr get.scoop.sh -outfile 'install.ps1'
-    if ((New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-        & .\install.ps1 -RunAsAdmin
-    } else {
-        & .\install.ps1
+Function Import-Dot-Env {
+    if (Test-Path -Path '.env') {
+        # load environment properties
+        $envProps = ConvertFrom-StringData (Get-Content '.env' -raw)
     }
-    ReloadEnvVars
+
+    Return $envProps
 }
 
+Function Initialize-Proxy {
+    $envProps = Import-Dot-Env
+    if ($envProps.'HTTP_PROXY') {
+        $Env:HTTP_PROXY = $envProps.'HTTP_PROXY'
+        $Env:HTTPS_PROXY = $Env:HTTP_PROXY
+        if ($envProps.'NO_PROXY') {
+            $Env:NO_PROXY = $envProps.'NO_PROXY'
+            $WebProxy = New-Object System.Net.WebProxy($Env:HTTP_PROXY, $true, ($Env:NO_PROXY).split(','))
+        }
+        else {
+            $WebProxy = New-Object System.Net.WebProxy($Env:HTTP_PROXY, $true)
+        }
+
+        [net.webrequest]::defaultwebproxy = $WebProxy
+        [net.webrequest]::defaultwebproxy.credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
+    }
+}
+
+
+## start of script
+$ErrorActionPreference = "Stop"
+
+Push-Location $PSScriptRoot
 Write-Output "Running in ${pwd}"
 
-# Necessary for 7zip installation, failed on Jenkins for unknown reason. See those issues:
-# https://github.com/ScoopInstaller/Scoop/issues/460
-# https://github.com/ScoopInstaller/Scoop/issues/4024
-ScoopInstall('lessmsi')
-Invoke-CommandLine -CommandLine "scoop config MSIEXTRACT_USE_LESSMSI $true"
-# Default installer tools, e.g., dark is required for python
-ScoopInstall('7zip', 'innounp', 'dark')
-Invoke-CommandLine -CommandLine "scoop bucket add versions" -StopAtError $false -Silent $true
-Invoke-CommandLine -CommandLine "scoop update"
-ScoopInstall('python')
-[string[]]$packages = Get-Content -Path .\requirements.txt
-PythonInstall($packages)
+Initialize-Proxy
 
-# We need GNU Make for transformation of Make projects
-ScoopInstall('mingw-winlibs-llvm-ucrt')
-
-if ($args) {
-    Invoke-CommandLine -CommandLine "python src/transformer.py $args"
+if ($install) {
+    if (-Not (Test-Path -Path '.bootstrap')) {
+        New-Item -ItemType Directory '.bootstrap'
+    }
+    # Installation of Scoop, Python and pipenv via bootstrap
+    $bootstrapSource = 'https://raw.githubusercontent.com/avengineers/bootstrap/develop/bootstrap.ps1'
+    Invoke-RestMethod $bootstrapSource -OutFile '.\.bootstrap\bootstrap.ps1'
+    Invoke-CommandLine '. .\.bootstrap\bootstrap.ps1'
+    Write-Output "For installation changes to take effect, please close and re-open your current shell."
 }
 else {
-    # Run test cases to be found in folder test/
-    Invoke-CommandLine -CommandLine "python test/run_all.py" -StopAtError $false
+    # To avoid Jenkins reboot force a reload of environment after installation
+    if ($Env:JENKINS_URL -and $Env:BUILD_NUMBER) {
+        $Env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+    }
+
+    if ($clean) {
+        # Remove all build artifacts
+        $buildDirs = '.\output'
+        foreach ($buildDir in $buildDirs) {
+            if (Test-Path -Path $buildDir) {
+                Remove-Item $buildDir -Force -Recurse
+            }
+        }
+    }
+    if ($args) {
+        Invoke-CommandLine -CommandLine "python -m pipenv run python src/transformer.py $args"
+        $version=git rev-parse --short HEAD
+        Write-Host Transformer Version = $version
+    }
+    else {
+        # Run test cases to be found in folder test/
+        Invoke-CommandLine -CommandLine "python -m pipenv run pytest" -StopAtError $false
+    }
 }
 
-$version=git rev-parse --short HEAD
-Write-Host Transformer Version = $version
-
 Pop-Location
+## end of script

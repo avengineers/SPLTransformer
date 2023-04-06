@@ -1,4 +1,4 @@
-name: selftests
+name: CI
 
 on:
   push:
@@ -10,17 +10,21 @@ on:
 
 jobs:
   build:
-    runs-on: windows-2019
+    name: Unit and Integration Tests
+    runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           submodules: true
       - name: install tools and run selftests
-        run: .\build.ps1
-        shell: powershell
-      - uses: actions/upload-artifact@v2
+        run: |
+          .\build.ps1 -install
+          .\build.ps1
+        shell: pwsh
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action/composite@v2
+        if: always()
         with:
-          name: unittest-results.zip
-          retention-days: 90
-          path: "output/test-report.xml"
-          if-no-files-found: error
+          files: |
+            test/output/test-report.xml

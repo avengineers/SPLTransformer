@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ProjectAssistant Version="5.22.35 SP1">
+    <General>
+        <Name>HV_Sensor</Name>
+        <Version>1.0</Version>
+        <Author>SommerDo</Author>
+    </General>
+    <Environment>
+        <Platform>Canoeemu</Platform>
+        <Derivative UUID="8165C005-42C5-4B53-A60E-1F97D70A80F1">TC322L</Derivative>
+        <Compiler UUID="8DB6C5C5-6807-4601-B7B7-68A4A5B277F6">Tasking</Compiler>
+        <SipIds>
+            <SipId>PAI1551</SipId>
+        </SipIds>
+        <TargetType>Real Target</TargetType>
+        <UseCases/>
+        <PostBuildLoadableSupport>false</PostBuildLoadableSupport>
+        <PostBuildSelectableSupport>false</PostBuildSelectableSupport>
+        <ModuleSpecificDerivatives/>
+        <ProjectType>
+            <Type>Standard</Type>
+        </ProjectType>
+    </Environment>
+    <Folders>
+        <ECUC>.\Config\ECUC</ECUC>
+        <GenData>..\..\Src\Bsw\GenData</GenData>
+        <GenDataVtt>.\Appl\GenDataVtt</GenDataVtt>
+        <Source>..\..\Src\Bsw\GenData\Callouts</Source>
+        <ServiceComponents>.\Config\ServiceComponents</ServiceComponents>
+        <Logs>.\Log</Logs>
+        <SIP>.\..\..\..\ThirdParty\CBD</SIP>
+        <StartMenu></StartMenu>
+        <ApplicationComponentFolders>
+            <ApplicationComponentFolder>.\Config\ApplicationComponents</ApplicationComponentFolder>
+        </ApplicationComponentFolders>
+        <BswInternalBehaviour>.\Config\InternalBehavior</BswInternalBehaviour>
+        <McData>.\Config\McData</McData>
+        <DefinitionRestriction>.\DefRestrict</DefinitionRestriction>
+        <AUTOSAR>.\Config\AUTOSAR</AUTOSAR>
+    </Folders>
+    <Tools>
+        <DEV>C:\Program Files (x86)\Vector DaVinci Developer 4.5\Bin\DaVinciDEV.exe</DEV>
+        <LegacyConverter Version="1.8.60.0"/>
+        <DDM Version="18.1.0.10"/>
+    </Tools>
+    <Input>
+        <ECUEX>Config\System\SystemExtract.arxml</ECUEX>
+        <Options>
+            <IgnoreUuidsSystemDescriptionFiles>false</IgnoreUuidsSystemDescriptionFiles>
+            <IgnoreUuidsStandardConfigurationFiles>false</IgnoreUuidsStandardConfigurationFiles>
+            <GenerateUpdateReport>true</GenerateUpdateReport>
+            <GenerateXmlUpdateReport>false</GenerateXmlUpdateReport>
+        </Options>
+    </Input>
+    <References>
+        <DVWorkspace>.\Config\Developer\HV_Sensor.dcf</DVWorkspace>
+        <FlatMap>Config\System\FlatMap.arxml</FlatMap>
+        <FlatECUEX>Config\System\FlatExtract.arxml</FlatECUEX>
+        <OEMCommunicationExtract>Config\System\Communication.arxml</OEMCommunicationExtract>
+        <EcucFileReferences/>
+    </References>
+    <EcucSplitter>
+        <Configuration>Config\ECUC\HV_Sensor.ecuc.arxml</Configuration>
+        <Splitter File=".\Config\ECUC\HV_Sensor_Com_Com_ecuc.arxml">
+            <Module Name="Com"/>
+        </Splitter>
+        <OwnFolderForEachSplitter>false</OwnFolderForEachSplitter>
+        <OwnFileForEachInstance>true</OwnFileForEachInstance>
+    </EcucSplitter>
+    <Display LastVersion="5.22.50 SP4">
+        <FileSet Id="" CS="63a9b5e8">
+            <File Order="0" EcuInstance="BV_BatteEnergContrModulUDS" Hash="29a8cc88d3422b3e89e391bb5320c4c5" FileCategory="diagnostic_system_extract,communication_system_extract">$(DpaProjectFolder)\Input\Battery_Energy_Control_Module_000017_EV_BECM1922071_001.arxml</File>
+            <File Order="1" Hash="2d2a8ef840691c8b8605627be5a5fd1" FileCategory="autosar_complementary_data">$(DpaProjectFolder)\Input\AiSpecification.arxml</File>
+            <File Order="2" Hash="8243d101a690a4a78bf2ddcd7854cdd6" FileCategory="autosar_complementary_data">$(DpaProjectFolder)\Input\ARPlatform.arxml</File>
+            <File Order="3" Hash="23dc30f71859985eec42432368ded8a7" FileCategory="autosar_complementary_data">$(DpaProjectFolder)\Input\PorscheISO_withoutComPorts.arxml</File>
+            <File Order="4" EcuInstance="UI2S_01" Hash="f19c985f65a5190bf137c892f837c25c" FileCategory="communication_system_extract">$(DpaProjectFolder)\Input\E3_1_2_Premium_V12.05.00F_P26_AR430_UI2S_01.arxml</File>
+        </FileSet>
+        <Merge>
+            <Path Id="COMPOSITION-SW-COMPONENT-TYPE" ARPath="/ComponentTypes/Geltungsbereich_E3_1_2_Premium"/>
+            <Path Id="ECU-INSTANCE" ARPath="/Diagnostics/Common/BV_BatteEnergContrModulUDS"/>
+            <Path Id="ROOT-SW-COMPOSITION-PROTOTYPE" ARPath="/E3_1_2_Premium/System/Geltungsbereich_E3_1_2_Premium"/>
+            <Path Id="SYSTEM" ARPath="/E3_1_2_Premium/System"/>
+        </Merge>
+        <SelectiveUpdate Active="false" CS="ecd6502d"/>
+    </Display>
+    <ECUC>
+        <Active RootPackageName="/ActiveEcuC/ActiveEcuC">Config\ECUC\HV_Sensor.ecuc.arxml</Active>
+        <Derived RootPackageName="/InitialEcuC/InitialEcuC">Config\ECUC\HV_Sensor.ecuc.Initial.arxml</Derived>
+    </ECUC>
+    <PostBuildLoadable RTEDataFreezeChecksum="" CurrentConfigurationPhase="PRE_COMPILE"/>
+    <DEVSettings>
+        <SelectiveImport>All</SelectiveImport>
+        <ObjectLocking>true</ObjectLocking>
+        <ImportModePreset>true</ImportModePreset>
+    </DEVSettings>
+    <ToolSettings>
+        <Generators>
+            <Settings Name="com.vector.cfg.gen.core.genusersettings">
+                <Settings Name="com.vector.cfg.gen.Tresos_proxy">
+                    <Settings Name="General">
+                        <Setting Value="System" Name="forcearchitecture"/>
+                        <Setting Value="1648,1055,1072" Name="ignoretresosmsgids"/>
+                        <Setting Value="true" Name="performanceoptimization"/>
+                        <Setting Value="false" Name="tresosverification"/>
+                    </Settings>
+                </Settings>
+            </Settings>
+            <Settings Name="com.vector.cfg.gui.core.generators.ExtGenStepOrder">
+                <Setting Value="INTERNAL_GENERATION" Name="Order"/>
+            </Settings>
+            <Settings Name="com.vector.cfg.gui.core.generators.GeneratedModules">
+                <Setting Value="false" Name="Dio"/>
+                <Setting Value="false" Name="Fee"/>
+                <Setting Value="false" Name="Fls"/>
+                <Setting Value="false" Name="Gpt"/>
+                <Setting Value="false" Name="Mcu"/>
+            </Settings>
+            <Settings Name="com.vector.cfg.gui.core.generators.GenerationTarget">
+                <Setting Value="Real Target" Name="TargetType"/>
+            </Settings>
+        </Generators>
+        <Misc>
+            <Settings Name="com.vector.cfg.gen.core.bswmdmigration.internal.service.BswImplVersionPersistor">
+                <Settings Name="|MICROSAR|BswM">
+                    <Setting Value="14.0.0" Name="BswImplSwVersion"/>
+                </Settings>
+            </Settings>
+        </Misc>
+    </ToolSettings>
+    <TopDownServiceConfiguration>
+        <NvM>true</NvM>
+    </TopDownServiceConfiguration>
+    <Miscellaneous>
+        <AmdGenerateDebugData>false</AmdGenerateDebugData>
+        <AutomaticSyncSystemDescription>false</AutomaticSyncSystemDescription>
+    </Miscellaneous>
+    <SwctGeneration generationMode="SWCT_ONLY">
+        <Component Name="Appl_Com" GenerationEnabled="true" TargetFolder="..\..\Src\Bsw\GenData\Templates"/>
+    </SwctGeneration>
+</ProjectAssistant>
